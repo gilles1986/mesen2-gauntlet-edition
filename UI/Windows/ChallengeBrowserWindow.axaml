@@ -1,0 +1,89 @@
+<Window
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:vm="using:Mesen.ViewModels"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="430"
+	x:Class="Mesen.Windows.ChallengeBrowserWindow"
+	Width="500" Height="430"
+	x:DataType="vm:ChallengeBrowserViewModel"
+	Title="Browse / Manage Challenges"
+>
+	<DockPanel Margin="8">
+		<Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,1*" Margin="0 0 0 6">
+			<Button Grid.Column="0" Content="Refresh" MinWidth="70" Click="Refresh_Click" IsEnabled="{Binding !IsLoading}" />
+			<TextBlock Grid.Column="1" Text="{Binding Status}" VerticalAlignment="Center" Margin="10 0 0 0" TextTrimming="CharacterEllipsis" />
+		</Grid>
+
+		<!-- Announcement banner: the same announcement the startup popup shows, kept passive here
+		     (badge + headline + a Details button that opens the full popup). Hidden when there is
+		     none, when the server can't be reached, or when announcements are turned off. A
+		     ContentControl + DataTemplate rather than a nested DataContext, so the compiled
+		     bindings inside keep a declared type. -->
+		<ContentControl DockPanel.Dock="Top" Content="{Binding Announcement}" IsVisible="{Binding HasAnnouncement}" Margin="0 0 0 6">
+			<ContentControl.ContentTemplate>
+				<DataTemplate DataType="vm:ChallengeAnnouncementViewModel">
+					<Border BorderBrush="#40808080" BorderThickness="1" Padding="8 6">
+						<Grid ColumnDefinitions="1*,Auto">
+							<StackPanel Grid.Column="0" VerticalAlignment="Center">
+								<StackPanel Orientation="Horizontal" Spacing="6">
+									<Border Background="{Binding BadgeBrush}" CornerRadius="3" Padding="6 1"
+									        IsVisible="{Binding HasBadge}" VerticalAlignment="Center">
+										<TextBlock Text="{Binding BadgeText}" Foreground="White" FontSize="10" FontWeight="Bold" />
+									</Border>
+									<TextBlock Text="{Binding Title}" FontWeight="Bold" VerticalAlignment="Center"
+									           TextTrimming="CharacterEllipsis" />
+								</StackPanel>
+								<TextBlock Text="{Binding Message}" IsVisible="{Binding HasMessage}"
+								           Foreground="Gray" FontSize="11" TextWrapping="Wrap" MaxLines="2"
+								           TextTrimming="CharacterEllipsis" Margin="0 2 0 0" />
+							</StackPanel>
+							<Button Grid.Column="1" Content="Details" MinWidth="70" VerticalAlignment="Center"
+							        Margin="8 0 0 0" Click="Announcement_Click" />
+						</Grid>
+					</Border>
+				</DataTemplate>
+			</ContentControl.ContentTemplate>
+		</ContentControl>
+
+		<StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 8 0 0">
+			<Button MinWidth="70" HorizontalContentAlignment="Center" Click="Close_Click" Content="Close" />
+		</StackPanel>
+
+		<Border BorderBrush="Gray" BorderThickness="1" Padding="1">
+			<ScrollViewer HorizontalScrollBarVisibility="Disabled">
+				<ItemsControl ItemsSource="{Binding Items}">
+					<ItemsControl.ItemTemplate>
+						<DataTemplate DataType="vm:ChallengeBrowserItem">
+							<Border BorderBrush="#40808080" BorderThickness="0 0 0 1" Padding="6 6">
+								<Grid ColumnDefinitions="1*,Auto">
+									<StackPanel Grid.Column="0" VerticalAlignment="Center">
+										<TextBlock Text="{Binding Name}" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
+										<StackPanel Orientation="Horizontal" Spacing="8" Margin="0 2 0 0">
+											<TextBlock Text="Installed" Foreground="#4CAF50" IsVisible="{Binding Installed}" />
+											<TextBlock Text="Not installed" Foreground="Gray" IsVisible="{Binding !Installed}" />
+											<TextBlock Text="Imported (not in catalog)" Foreground="Gray" IsVisible="{Binding IsLocalOnly}" />
+											<TextBlock Text="Inactive (no submissions)" Foreground="#FF8080" IsVisible="{Binding !IsActive}" />
+										</StackPanel>
+									</StackPanel>
+									<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+										<!-- Nothing to download for a locally imported challenge, so it only offers Delete. -->
+										<StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding CanInstall}">
+											<Button Content="Install" MinWidth="70" Click="Install_Click"
+											        IsVisible="{Binding !Installed}" IsEnabled="{Binding !Busy}" />
+											<Button Content="Reinstall" MinWidth="70" Click="Install_Click"
+											        IsVisible="{Binding Installed}" IsEnabled="{Binding !Busy}" />
+										</StackPanel>
+										<Button Content="Delete" MinWidth="60" Click="Delete_Click"
+										        IsVisible="{Binding Installed}" IsEnabled="{Binding !Busy}" />
+									</StackPanel>
+								</Grid>
+							</Border>
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+				</ItemsControl>
+			</ScrollViewer>
+		</Border>
+	</DockPanel>
+</Window>

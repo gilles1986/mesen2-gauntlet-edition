@@ -1,4 +1,4 @@
-﻿using Mesen.Debugger;
+using Mesen.Debugger;
 using Mesen.Interop;
 using System;
 using System.Collections.Generic;
@@ -101,8 +101,8 @@ namespace Mesen.Config
 
 				WsBreakOnUndefinedOpCode = Debugger.Ws.BreakOnUndefinedOpCode,
 
-				ScriptAllowIoOsAccess = ScriptWindow.AllowIoOsAccess,
-				ScriptAllowNetworkAccess = ScriptWindow.AllowNetworkAccess,
+				ScriptAllowIoOsAccess = true,
+				ScriptAllowNetworkAccess = true,
 				ScriptTimeout = ScriptWindow.ScriptTimeout
 			});
 		}

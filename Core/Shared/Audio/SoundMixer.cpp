@@ -21,6 +21,7 @@ SoundMixer::SoundMixer(Emulator* emu)
 	_pitchAdjustBuffer = new int16_t[0x8000];
 	_reverbFilter.reset(new ReverbFilter());
 	_crossFeedFilter.reset(new CrossFeedFilter());
+	_scriptMuted = false;
 }
 
 SoundMixer::~SoundMixer()
@@ -155,6 +156,14 @@ void SoundMixer::PlayAudioBuffer(int16_t* samples, uint32_t sampleCount, uint32_
 					out = _pitchAdjustBuffer;
 				}
 
+				if(_scriptMuted) {
+					//Script-muted (e.g. the challenge preview freeze): output silence but STILL
+					//feed the audio device, so the audio buffer keeps pacing the emulation to
+					//real-time. Skipping PlayBuffer (calling Stop) would unthrottle the emulation
+					//loop and make frame-counted timers (e.g. the preview) race.
+					memset(out, 0, (size_t)count * 2 * sizeof(int16_t));
+				}
+
 				_audioDevice->PlayBuffer(out, count, cfg.SampleRate, true);
 				_audioDevice->ProcessEndOfFrame();
 			} else {
@@ -202,4 +211,9 @@ void SoundMixer::GetLastSamples(int16_t& left, int16_t& right)
 {
 	left = _leftSample;
 	right = _rightSample;
+}
+
+void SoundMixer::SetScriptMuted(bool muted)
+{
+	_scriptMuted = muted;
 }

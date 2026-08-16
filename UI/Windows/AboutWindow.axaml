@@ -11,7 +11,7 @@
 	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 	mc:Ignorable="d"
 	x:Class="Mesen.Windows.AboutWindow"
-	Width="350" Height="525"
+	Width="350" Height="560"
 	Title="{l:Translate wndTitle}"
 	CanResize="False"
 	Name="root"
@@ -56,14 +56,16 @@
 				Margin="10"
 			/>
 			<StackPanel>
-				<TextBlock Text="{l:Translate lblName}" FontSize="20" Margin="0 4 0 0" />
+				<TextBlock Text="Mesen Kaizo Challenge Edition" FontSize="18" FontWeight="Bold" Margin="0 4 0 2" TextWrapping="Wrap" />
 				<StackPanel Orientation="Horizontal" Margin="3">
-					<TextBlock Text="{l:Translate lblVersion}" Margin="0 0 5 0" />
-					<TextBlock Text="{Binding Version, ElementName=root}" />
+					<TextBlock Text="Challenge Edition:" Margin="0 0 5 0" />
+					<TextBlock Text="{Binding ChallengeVersion, ElementName=root}" />
+					<TextBlock Text="{Binding ChallengeBuildDate, ElementName=root}" Margin="6 0 0 0" Foreground="Gray" />
 				</StackPanel>
 				<StackPanel Orientation="Horizontal" Margin="3">
-					<TextBlock Text="{l:Translate lblBuildDate}" Margin="0 0 5 0" />
-					<TextBlock Text="{Binding BuildDate, ElementName=root}" />
+					<TextBlock Text="Mesen Version:" Margin="0 0 5 0" />
+					<TextBlock Text="{Binding Version, ElementName=root}" />
+					<TextBlock Text="{Binding BuildDate, ElementName=root}" Margin="6 0 0 0" Foreground="Gray" />
 				</StackPanel>
 				<StackPanel Orientation="Horizontal" Margin="3" IsVisible="{Binding BuildShortSha.Length, ElementName=root}">
 					<TextBlock Text="{l:Translate lblCommitId}" Margin="0 0 5 0" />
@@ -77,6 +79,10 @@
 				<StackPanel Orientation="Horizontal" Margin="3">
 					<TextBlock Text="{l:Translate lblWebsite}" Margin="0 0 5 0" />
 					<TextBlock Text="{l:Translate lblLink}" Foreground="{DynamicResource SystemAccentColor}" TextDecorations="Underline" Cursor="Hand" Tapped="OnMesenLinkTapped" />
+				</StackPanel>
+				<StackPanel Orientation="Horizontal" Margin="3">
+					<TextBlock Text="Challenge:" Margin="0 0 5 0" />
+					<TextBlock Text="saphros.de/challenges" Foreground="{DynamicResource SystemAccentColor}" TextDecorations="Underline" Cursor="Hand" Tapped="OnChallengeLinkTapped" />
 				</StackPanel>
 			</StackPanel>
 		</DockPanel>

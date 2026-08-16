@@ -17,6 +17,8 @@ namespace Mesen.Utilities
 		public const string PaletteExt = "pal";
 		public const string TraceExt = "txt";
 		public const string ZipExt = "zip";
+		public const string ChallengeExt = "cha";   //challenge package = a renamed .zip (so users don't unzip it)
+		public const string ChallengeReplayExt = "creplay";   //run replay package = a renamed .zip of the segment .inputs logs
 		public const string GifExt = "gif";
 		public const string AviExt = "avi";
 		public const string WaveExt = "wav";

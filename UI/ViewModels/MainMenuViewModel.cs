@@ -1,4 +1,4 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using Avalonia.Threading;
 using Mesen.Config;
 using Mesen.Config.Shortcuts;
@@ -16,7 +16,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
@@ -36,6 +35,7 @@ namespace Mesen.ViewModels
 		[Reactive] public List<object> OptionsMenuItems { get; set; } = new();
 		[Reactive] public List<object> ToolsMenuItems { get; set; } = new();
 		[Reactive] public List<object> DebugMenuItems { get; set; } = new();
+		[Reactive] public List<object> ChallengeMenuItems { get; set; } = new();
 		[Reactive] public List<object> HelpMenuItems { get; set; } = new();
 
 		private RomInfo RomInfo => MainWindow.RomInfo;
@@ -47,6 +47,7 @@ namespace Mesen.ViewModels
 
 		private ConfigWindow? _cfgWindow = null;
 		private MainMenuAction _selectControllerAction = new();
+		private MainWindow? _wnd = null;   //captured in Initialize; used to rebuild the Challenge menu on open
 
 		[Obsolete("For designer only")]
 		public MainMenuViewModel() : this(new MainWindowViewModel()) { }
@@ -80,12 +81,358 @@ namespace Mesen.ViewModels
 
 		public void Initialize(MainWindow wnd)
 		{
+			_wnd = wnd;
 			InitFileMenu(wnd);
 			InitGameMenu(wnd);
 			InitOptionsMenu(wnd);
 			InitToolMenu(wnd);
 			InitDebugMenu(wnd);
+			InitChallengeMenu(wnd);
 			InitHelpMenu(wnd);
+		}
+
+		/// <summary>Rebuilds the Challenge menu (called when it opens) so the "Export Run" list
+		/// reflects runs completed during this session, not just those present at startup.</summary>
+		public void RefreshChallengeMenu()
+		{
+			if(_wnd != null) {
+				InitChallengeMenu(_wnd);
+			}
+		}
+
+		private void InitChallengeMenu(MainWindow wnd)
+		{
+			ChallengeMenuItems = new List<object>() {
+				new MainMenuAction() {
+					ActionType = ActionType.Custom,
+					CustomText = "Start Challenge",
+					SubActions = GetChallengeStartActions()
+				},
+				new MainMenuAction() {
+					ActionType = ActionType.Custom,
+					CustomText = "Practice Segment",
+					SubActions = GetPracticeActions()
+				},
+				new MainMenuAction() {
+					ActionType = ActionType.Custom,
+					CustomText = "Watch Replay from File...",
+					IsEnabled = () => !ChallengeManager.IsActive,
+					OnClick = async () => await WatchReplayFromFileFlow(wnd)
+				},
+				new MainMenuAction() {
+					ActionType = ActionType.Custom,
+					CustomText = "Race a Ghost from File...",
+					IsEnabled = () => !ChallengeManager.IsActive,
+					OnClick = async () => await RaceGhostFromFileFlow(wnd)
+				},
+				new MainMenuAction() {
+					ActionType = ActionType.Custom,
+					CustomText = "Export Run",
+					SubActions = GetExportRunActions(wnd)
+				},
+				new MainMenuAction() {
+					ActionType = ActionType.Custom,
+					CustomText = "Stop Challenge",
+					IsEnabled = () => ChallengeManager.IsActive,
+					OnClick = () => ChallengeManager.Stop()
+				},
+				new ContextMenuSeparator(),
+				new MainMenuAction() {
+					ActionType = ActionType.Custom,
+					CustomText = "View Leaderboards (Web)",
+					OnClick = () => ApplicationHelper.OpenBrowser("https://www.saphros.de/challenges")
+				},
+				new MainMenuAction() {
+					ActionType = ActionType.Custom,
+					CustomText = "Browse / Manage Challenges...",
+					OnClick = async () => {
+						await new ChallengeBrowserWindow() {
+							DataContext = new ChallengeBrowserViewModel()
+						}.ShowCenteredDialog((Control)wnd);
+						InitChallengeMenu(wnd);   //refresh Start/Practice submenus after installs/deletions
+					}
+				},
+				new MainMenuAction() {
+					ActionType = ActionType.Custom,
+					CustomText = "Import Challenge...",
+					OnClick = async () => await ImportChallengeFlow(wnd)
+				},
+				new MainMenuAction() {
+					ActionType = ActionType.Custom,
+					CustomText = "Settings...",
+					OnClick = () => {
+						new ChallengeSettingsWindow() {
+							DataContext = new ChallengeSettingsViewModel()
+						}.ShowCenteredDialog((Control)wnd);
+					}
+				}
+			};
+		}
+
+		private async Task ImportChallengeFlow(MainWindow wnd)
+		{
+			string? zip = await FileDialogHelper.OpenFile(null, wnd, FileDialogHelper.ChallengeExt, FileDialogHelper.ZipExt);
+			if(zip == null) {
+				return;
+			}
+
+			try {
+				ChallengePackageInfo info = ChallengeImporter.Validate(zip);
+				string id = info.Id;
+
+				//The clean SMW ROM is only needed to patch SMW-hack segments. A retro-only
+				//challenge (external ROMs) doesn't need it, so don't prompt for it.
+				string? cleanRom = null;
+				if(info.HasPatchedSegments) {
+					//Prompts for + validates + copies the SMW ROM on first use (with its own
+					//clear error messages); null means the user cancelled or it was invalid.
+					cleanRom = await ChallengeManager.EnsureCleanRomAsync(wnd);
+					if(cleanRom == null) {
+						return;
+					}
+				}
+
+				string destDir = Path.Combine(ChallengeManager.ChallengesRoot, id);
+				if(Directory.Exists(destDir)) {
+					DialogResult overwrite = await MessageBox.Show(wnd, "A challenge '" + id + "' already exists. Overwrite it?", "Import Challenge", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+					if(overwrite != DialogResult.Yes) {
+						return;
+					}
+				}
+
+				ChallengeImporter.Import(zip, cleanRom ?? "", destDir);
+
+				InitChallengeMenu(wnd);   //refresh the Start submenu so the new challenge shows up
+
+				string message = "Challenge '" + id + "' imported.";
+				if(info.ExternalRoms.Count > 0) {
+					//Retro-game challenge: the ROMs aren't shipped. Tell the player exactly which
+					//file(s) to provide, and where, so the challenge can be started.
+					string gamesDir = Path.Combine(destDir, "games");
+					message += "\n\nThis challenge uses game ROM(s) that are not included. " +
+						"Copy the following file" + (info.ExternalRoms.Count > 1 ? "s" : "") + " into:\n" + gamesDir + "\n\n  • " +
+						string.Join("\n  • ", info.ExternalRoms) +
+						"\n\n(The file name and contents must match exactly - the ROM is verified by hash.)";
+				}
+				await MessageBox.Show(wnd, message, "Import Challenge", MessageBoxButtons.OK, MessageBoxIcon.Info);
+			} catch(Exception ex) {
+				await MessageBox.Show(wnd, "Import failed: " + ex.Message, "Import Challenge", MessageBoxButtons.OK, MessageBoxIcon.Error);
+			}
+		}
+
+		private List<object> GetChallengeStartActions()
+		{
+			List<object> actions = new();
+			var challenges = ChallengeManager.GetChallengeList();
+			if(challenges.Count == 0) {
+				actions.Add(new MainMenuAction() {
+					ActionType = ActionType.Custom,
+					CustomText = "(no challenges found)",
+					IsEnabled = () => false
+				});
+			} else {
+				foreach(var c in challenges) {
+					string folder = c.Folder;
+					actions.Add(new MainMenuAction() {
+						ActionType = ActionType.Custom,
+						CustomText = c.Name,
+						OnClick = () => ChallengeManager.StartChallenge(folder)
+					});
+				}
+			}
+			return actions;
+		}
+
+		private List<object> GetPracticeActions()
+		{
+			List<object> actions = new();
+			var challenges = ChallengeManager.GetChallengeList();
+			if(challenges.Count == 0) {
+				actions.Add(new MainMenuAction() { ActionType = ActionType.Custom, CustomText = "(no challenges found)", IsEnabled = () => false });
+				return actions;
+			}
+
+			foreach(var c in challenges) {
+				string folder = c.Folder;
+				List<object> segActions = new();
+				List<string> segs = ChallengeManager.GetSegmentNames(folder);
+				for(int i = 0; i < segs.Count; i++) {
+					int index = i + 1;
+					segActions.Add(new MainMenuAction() {
+						ActionType = ActionType.Custom,
+						CustomText = index + ". " + segs[i],
+						OnClick = () => ChallengeManager.StartPractice(folder, index)
+					});
+				}
+				if(segActions.Count == 0) {
+					segActions.Add(new MainMenuAction() { ActionType = ActionType.Custom, CustomText = "(no segments)", IsEnabled = () => false });
+				}
+				actions.Add(new MainMenuAction() {
+					ActionType = ActionType.Custom,
+					CustomText = c.Name,
+					SubActions = segActions
+				});
+			}
+			return actions;
+		}
+
+		/// <summary>
+		/// Builds the "Export Run" submenu: one entry per archived run (.creplay in challenges/replays,
+		/// newest first). Each run package already bundles the segment inputs + ghosts, so exporting is
+		/// just a Save-As copy to a shareable location. Rebuilt on menu-open via RefreshChallengeMenu so
+		/// runs finished this session appear. Runs are archived on every completion (see ChallengeSubmit).
+		/// </summary>
+		private List<object> GetExportRunActions(MainWindow wnd)
+		{
+			List<object> actions = new();
+
+			string replaysRoot = Path.Combine(ChallengeManager.ChallengesRoot, "replays");
+			//Only the packaged run files; the temp extraction dirs are folders, so "*.creplay" skips them.
+			List<string> runFiles = Directory.Exists(replaysRoot)
+				? Directory.GetFiles(replaysRoot, "*.creplay").OrderByDescending(File.GetLastWriteTime).ToList()
+				: new List<string>();
+
+			if(runFiles.Count == 0) {
+				actions.Add(new MainMenuAction() {
+					ActionType = ActionType.Custom,
+					CustomText = "(no completed runs yet)",
+					IsEnabled = () => false
+				});
+				return actions;
+			}
+
+			//Map challenge id (== folder) to its display name for friendlier labels.
+			Dictionary<string, string> nameById = new();
+			foreach((string folder, string name) in ChallengeManager.GetChallengeList()) {
+				nameById[folder] = name;
+			}
+
+			foreach(string path in runFiles) {
+				string file = path;   //capture per-iteration for the closure
+				actions.Add(new MainMenuAction() {
+					ActionType = ActionType.Custom,
+					CustomText = DescribeRunFile(file, nameById),
+					OnClick = async () => await ExportRunFlow(wnd, file)
+				});
+			}
+			return actions;
+		}
+
+		/// <summary>Friendly label for a run file: "&lt;challenge name&gt; — &lt;date time&gt;", with the
+		/// challenge id parsed out of run_&lt;id&gt;_&lt;timestamp&gt;.creplay and mapped to its name.</summary>
+		private static string DescribeRunFile(string path, Dictionary<string, string> nameById)
+		{
+			string baseName = Path.GetFileNameWithoutExtension(path);
+			//Greedy id capture so challenge ids containing underscores still split correctly.
+			Match m = Regex.Match(baseName, @"^run_(?<id>.+)_\d{8}_\d{6}$");
+			string idPart = m.Success ? m.Groups["id"].Value : baseName;
+			string display = nameById.TryGetValue(idPart, out string? n) && !string.IsNullOrEmpty(n) ? n : idPart;
+			//File write time == when the package was created (right after the run finished).
+			return display + " — " + File.GetLastWriteTime(path).ToString("yyyy-MM-dd HH:mm");
+		}
+
+		/// <summary>Copies an archived run package to a user-chosen location so it can be shared
+		/// (the receiver watches it, or races its ghost via "Race a Ghost from File...").</summary>
+		private async Task ExportRunFlow(MainWindow wnd, string sourcePath)
+		{
+			try {
+				if(!File.Exists(sourcePath)) {
+					await MessageBox.Show(wnd, "That run file no longer exists.", "Export Run", MessageBoxButtons.OK, MessageBoxIcon.Error);
+					return;
+				}
+				string? dest = await FileDialogHelper.SaveFile(null, Path.GetFileName(sourcePath), wnd, FileDialogHelper.ChallengeReplayExt);
+				if(dest == null) {
+					return;   //cancelled
+				}
+				File.Copy(sourcePath, dest, true);
+				DisplayMessageHelper.DisplayMessage("Challenge", "Run exported. Share the .creplay so others can watch it or race its ghost.");
+			} catch(Exception ex) {
+				await MessageBox.Show(wnd, "Export failed: " + ex.Message, "Export Run", MessageBoxButtons.OK, MessageBoxIcon.Error);
+			}
+		}
+
+		private async Task WatchReplayFromFileFlow(MainWindow wnd)
+		{
+			var prepared = await PrepareCreplayPackage(wnd, ChallengeReplayLauncher.WatchTempDir, "Watch Replay");
+			if(prepared == null) {
+				return;
+			}
+			(ChallengeReplayInfo info, string tempDir) = prepared.Value;
+
+			//Show whose run this is during playback (from the replay's own header).
+			ChallengeManager.StartReplay(info.ChallengeId, tempDir, info.Player);
+		}
+
+		/// <summary>
+		/// "Race a Ghost from File...": opens a shared .creplay, and if its challenge is installed
+		/// and the package contains ghost data, starts a NORMAL (playable, scored) run of that
+		/// challenge with the shared run's ghost racing alongside. Unlike Watch Replay, the player
+		/// plays themselves — this just overlays someone else's ghost.
+		/// </summary>
+		private async Task RaceGhostFromFileFlow(MainWindow wnd)
+		{
+			var prepared = await PrepareCreplayPackage(wnd, ChallengeReplayLauncher.RaceTempDir, "Race a Ghost");
+			if(prepared == null) {
+				return;
+			}
+			(ChallengeReplayInfo info, string tempDir) = prepared.Value;
+
+			//Older .creplay files (recorded before ghosts were bundled) can be watched but not raced.
+			if(!info.HasGhosts) {
+				await MessageBox.Show(wnd,
+					"This file doesn't contain ghost data, so there's nothing to race against.\n\n" +
+					"It was likely recorded by an older version. You can still watch it via " +
+					"\"Watch Replay from File...\".",
+					"No ghost data", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				return;
+			}
+
+			//Normal scored run of the challenge, with the shared run's ghost overlaid.
+			ChallengeManager.StartChallenge(info.ChallengeId, tempDir);
+		}
+
+		/// <summary>
+		/// Shared front-end for the .creplay flows: prompts for a file, extracts it into
+		/// replays/&lt;tempDirName&gt;, and validates that it names an installed challenge. Returns the
+		/// replay's description + extracted temp dir, or null if the user cancelled or a (reported)
+		/// error occurred. <paramref name="title"/> is the message-box caption for this flow.
+		/// </summary>
+		private async Task<(ChallengeReplayInfo info, string tempDir)?> PrepareCreplayPackage(MainWindow wnd, string tempDirName, string title)
+		{
+			//Accept the current .creplay package and legacy .zip runs (both are zip containers).
+			string? file = await FileDialogHelper.OpenFile(null, wnd, FileDialogHelper.ChallengeReplayExt, FileDialogHelper.ZipExt);
+			if(file == null) {
+				return null;
+			}
+
+			string tempDir = Path.Combine(ChallengeReplayLauncher.ReplaysRoot, tempDirName);
+
+			try {
+				ChallengeReplayLauncher.ExtractPackage(file, tempDirName);
+
+				ChallengeReplayInfo? info = ChallengeReplayInfo.FromFolder(tempDir);
+				if(info == null) {
+					await MessageBox.Show(wnd,
+						"This file doesn't look like a valid challenge file (no challenge information found inside).",
+						title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+					return null;
+				}
+
+				if(!ChallengeReplayLauncher.IsChallengeInstalled(info.ChallengeId)) {
+					//Clear, actionable message (this is the common case: someone else's run).
+					await MessageBox.Show(wnd, ChallengeReplayLauncher.NotInstalledMessage(info.ChallengeId),
+						"Challenge not installed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+					return null;
+				}
+
+				return (info, tempDir);
+			} catch(Exception ex) {
+				await MessageBox.Show(wnd, "Failed to load file: " + ex.Message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+				if(Directory.Exists(tempDir)) {
+					try { Directory.Delete(tempDir, true); } catch {}
+				}
+				return null;
+			}
 		}
 
 		private void InitFileMenu(MainWindow wnd)
@@ -802,6 +1149,7 @@ namespace Mesen.ViewModels
 						ApplicationHelper.GetOrCreateUniqueWindow(wnd, () => new SaveSpcFileWindow());
 					}
 				},
+
 			};
 		}
 
@@ -1115,6 +1463,16 @@ namespace Mesen.ViewModels
 				}
 			};
 
+			//Lock down all debug tools (debugger, script window, memory tools, ...) while a
+			//challenge is active so they cannot be used to cheat. This greys out the menu
+			//entries; DebugWindowManager additionally refuses to open the windows.
+			foreach(object item in DebugMenuItems) {
+				if(item is BaseMenuAction action) {
+					Func<bool>? originalIsEnabled = action.IsEnabled;
+					action.IsEnabled = () => !ChallengeManager.IsActive && (originalIsEnabled == null || originalIsEnabled());
+				}
+			}
+
 			DebugShortcutManager.RegisterActions(wnd, DebugMenuItems);
 		}
 
@@ -1132,6 +1490,7 @@ namespace Mesen.ViewModels
 				},
 				new MainMenuAction() {
 					ActionType = ActionType.CheckForUpdates,
+					IsVisible = () => false,
 					OnClick = () => CheckForUpdate(wnd, false)
 				},
 				new MainMenuAction() {
@@ -1151,6 +1510,8 @@ namespace Mesen.ViewModels
 
 		public void CheckForUpdate(Window mainWindow, bool silent)
 		{
+			return;
+#if false
 			Task.Run(async () => {
 				UpdatePromptViewModel? updateInfo = await UpdatePromptViewModel.GetUpdateInformation(silent);
 				if(updateInfo == null) {
@@ -1175,6 +1536,7 @@ namespace Mesen.ViewModels
 					});
 				}
 			});
+#endif
 		}
 
 		private async void InstallHdPack(Window wnd)

@@ -32,11 +32,15 @@ private:
 	unique_ptr<CrossFeedFilter> _crossFeedFilter;
 	unique_ptr<ReverbFilter> _reverbFilter;
 
+	bool _scriptMuted = false;
+
 	void ProcessEqualizer(int16_t* samples, uint32_t sampleCount, uint32_t targetRate);
 
 public:
 	SoundMixer(Emulator* emu);
 	~SoundMixer();
+
+	void SetScriptMuted(bool muted);
 
 	void PlayAudioBuffer(int16_t* samples, uint32_t sampleCount, uint32_t sourceRate);
 	void StopAudio(bool clearBuffer = false);

@@ -13,6 +13,10 @@ namespace Mesen.Config
 {
 	class FileAssociationHelper
 	{
+		//Shared by the .creplay association and (later) the challenge replay protocol handler:
+		//both open the same flow, so one entry to write and one to clean up.
+		private const string ChallengeReplayProgId = "Mesen.ChallengeReplay";
+
 		static private string CreateMimeType(string mimeType, string extension, string description, List<string> mimeTypes, bool addType)
 		{
 			string baseFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "mime", "packages");
@@ -219,6 +223,53 @@ namespace Mesen.Config
 			FileAssociationHelper.UpdateFileAssociation("ws", cfg.AssociateWsRomFiles);
 			FileAssociationHelper.UpdateFileAssociation("wsc", cfg.AssociateWsRomFiles);
 			FileAssociationHelper.UpdateFileAssociation("pc2", cfg.AssociateWsRomFiles);
+
+			FileAssociationHelper.UpdateChallengeReplayAssociation(ConfigManager.Config.Challenge.AssociateReplayFiles);
+		}
+
+		/// <summary>
+		/// Makes a double-click on a .creplay open its replay in this copy of the emulator.
+		///
+		/// Unlike the ROM associations above this one is on by default and rewritten on every
+		/// launch, because the Challenge Edition ships as a portable exe with no installer: the
+		/// registration has to follow the exe when the player moves it, or the association would
+		/// silently point at a path that no longer exists.
+		///
+		/// It uses its own ProgID rather than Mesen's, so turning it off can't disturb the ROM
+		/// associations - and so the protocol handler can later hang off the same entry.
+		/// </summary>
+		static public void UpdateChallengeReplayAssociation(bool associate)
+		{
+			if(!OperatingSystem.IsWindows()) {
+				//Linux/macOS would need .desktop entries / Info.plist - see docs/adr/0002.
+				return;
+			}
+
+			string extKey = @"HKEY_CURRENT_USER\Software\Classes\." + FileDialogHelper.ChallengeReplayExt;
+			string progIdPath = @"Software\Classes\" + ChallengeReplayProgId;
+
+			if(associate) {
+				ProcessModule? mainModule = Process.GetCurrentProcess().MainModule;
+				if(mainModule != null) {
+					//The exe path MUST be quoted: the emulator is portable, so it routinely lives
+					//under a user folder whose name contains a space ("C:\Users\Max Mustermann\...").
+					//Unquoted, Windows would split the command there and the association would break
+					//exactly when someone moves it - which is the case this is meant to survive.
+					Registry.SetValue(@"HKEY_CURRENT_USER\" + progIdPath, null, "Challenge Replay");
+					Registry.SetValue(@"HKEY_CURRENT_USER\" + progIdPath + @"\shell\open\command", null, "\"" + mainModule.FileName + "\" \"%1\"");
+					Registry.SetValue(extKey, null, ChallengeReplayProgId);
+				}
+			} else {
+				//Only clear the extension when it still points at us - someone else's handler
+				//for .creplay must survive us being switched off.
+				object? regKey = Registry.GetValue(extKey, null, "");
+				if(regKey != null && regKey.Equals(ChallengeReplayProgId)) {
+					Registry.SetValue(extKey, null, "");
+				}
+				try {
+					Registry.CurrentUser.DeleteSubKeyTree(progIdPath, false);
+				} catch { }
+			}
 		}
 
 		static private void UpdateFileAssociation(string extension, bool associate)

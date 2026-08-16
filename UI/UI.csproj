@@ -647,9 +647,34 @@
     <EmbeddedResource Include="Debugger\Utilities\LuaScripts\NtscSafeArea.lua" />
     <EmbeddedResource Include="Debugger\Utilities\LuaScripts\NesPianoRoll.lua" />
     <EmbeddedResource Include="Debugger\Utilities\LuaScripts\ReverseMode.lua" />
+    <!-- Challenge engine: embedded with a non-.lua logical name so it does NOT show up
+         in the (auto-enumerated) "Built-in Scripts" menu and cannot be opened/edited. -->
+    <EmbeddedResource Include="..\Challenge\relay.lua">
+      <LogicalName>Mesen.ChallengeEngine.relay.lua.txt</LogicalName>
+    </EmbeddedResource>
+    <!-- Challenge Edition version/build-date, single source of truth (see the file's header).
+         Read at runtime by ChallengeEditionInfo so a version bump needs no C# changes. -->
+    <EmbeddedResource Include="..\Challenge\version.txt">
+      <LogicalName>Mesen.ChallengeEngine.version.txt</LogicalName>
+    </EmbeddedResource>
+    <!-- Default achievement-unlock jingle. Played by ChallengeSound; a user-supplied
+         achievement.wav next to Mesen.exe overrides it. -->
+    <EmbeddedResource Include="..\Challenge\achievement.wav">
+      <LogicalName>Mesen.ChallengeEngine.achievement.wav</LogicalName>
+    </EmbeddedResource>
+    <!-- Stream overlay page. Written to stream/overlay.html next to Mesen.exe when the
+         stream overlay is enabled; the engine keeps stream/stats.json fresh alongside it. -->
+    <EmbeddedResource Include="..\Challenge\overlay.html">
+      <LogicalName>Mesen.ChallengeEngine.overlay.html</LogicalName>
+    </EmbeddedResource>
     <EmbeddedResource Include="Dependencies.zip" />
     <EmbeddedResource Include="Localization\resources.en.xml" WithCulture="false" Type="Non-Resx" />
     <EmbeddedResource Include="Utilities\DipSwitchDefinitions.xml" />
+  </ItemGroup>
+  <!-- Challenge build secret: a local (gitignored) ChallengeSecrets.Local.cs replaces the
+       placeholder that ships in the public repository. See Utilities\ChallengeSecrets.cs. -->
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)Utilities\ChallengeSecrets.Local.cs')">
+    <Compile Remove="Utilities\ChallengeSecrets.cs" />
   </ItemGroup>
   <ItemGroup>
     <AvaloniaXaml Update="Controls\FirmwareSelect.axaml">

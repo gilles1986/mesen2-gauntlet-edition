@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<!--
+  Mesen Challenge Edition - Stream Overlay
+  Self-contained OBS browser source. Point OBS at this file (stream/overlay.html);
+  it polls stats.json (written by the challenge engine on each run event) and
+  renders live PB / death / session stats. Styled to match saphros.de (synthwave).
+  Transparent background so it composits over your capture.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Challenge Stream Overlay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-card: rgba(11, 14, 36, 0.9);
+    --primary: #00d4ff;   /* cyan   */
+    --secondary: #ff007f; /* pink   */
+    --accent: #7b68ee;    /* purple */
+    --gold: #ffd700;
+    --text: #e8ecff;
+    --muted: #8b93c4;
+    --border: #2a2f52;
+    --font-head: 'Orbitron', system-ui, sans-serif;
+    --font-body: 'Outfit', system-ui, sans-serif;
+    --font-mono: 'Courier New', Courier, monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: transparent !important;
+    overflow: hidden;
+    font-family: var(--font-body);
+    color: var(--text);
+  }
+
+  #wrap {
+    width: 340px;
+    padding: 10px;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 2px solid var(--primary);
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+    border-radius: 10px;
+    padding: 12px 14px;
+    backdrop-filter: blur(2px);
+  }
+
+  /* header ---------------------------------------------------------- */
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.25);
+    padding-bottom: 7px;
+    margin-bottom: 9px;
+  }
+  .challenge {
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--primary);
+    text-shadow: 0 0 8px rgba(0, 212, 255, 0.45);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .player {
+    font-weight: 600;
+    font-size: 0.72rem;
+    color: var(--secondary);
+    text-shadow: 0 0 6px rgba(255, 0, 127, 0.4);
+    white-space: nowrap;
+  }
+
+  /* "now" banner ---------------------------------------------------- */
+  .now {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(123, 104, 238, 0.12);
+    border: 1px solid rgba(123, 104, 238, 0.4);
+    border-radius: 7px;
+    padding: 6px 9px;
+    margin-bottom: 10px;
+  }
+  .now .seg { font-size: 0.78rem; font-weight: 600; }
+  .now .seg .idx { color: var(--accent); font-family: var(--font-mono); }
+  .now .seg .nm  { color: var(--text); }
+  .now .rt {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--primary);
+  }
+  /* Goal badge for "kill X enemies" segments (only visible when the segment has a goal) */
+  .now .kgoal {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.78rem;
+    color: var(--secondary);
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 5px;
+    padding: 1px 6px;
+    margin-left: 6px;
+  }
+  .now .kgoal.hit { color: #38e08a; }
+
+  /* section label --------------------------------------------------- */
+  .lbl {
+    font-family: var(--font-head);
+    font-size: 0.6rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 2px 0 6px;
+  }
+
+  /* record row ------------------------------------------------------ */
+  .records {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 7px;
+    margin-bottom: 11px;
+  }
+  .rec {
+    text-align: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 6px 4px;
+  }
+  .rec .k {
+    font-size: 0.55rem; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .rec .v {
+    font-family: var(--font-mono); font-weight: 700; font-size: 0.86rem;
+    margin-top: 2px; color: var(--primary);
+  }
+  .rec.gold .v { color: var(--gold); text-shadow: 0 0 7px rgba(255, 215, 0, 0.4); }
+
+  /* session stat grid ---------------------------------------------- */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+  }
+  .stat {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 9px;
+  }
+  .stat .k { font-size: 0.66rem; color: var(--muted); }
+  .stat .v { font-family: var(--font-mono); font-weight: 700; font-size: 0.82rem; }
+  .stat.bad  .v { color: var(--secondary); }
+  .stat.good .v { color: #38e08a; }
+
+  /* nemesis --------------------------------------------------------- */
+  .nemesis {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 9px;
+    background: rgba(255, 0, 127, 0.1);
+    border: 1px solid rgba(255, 0, 127, 0.4);
+    border-radius: 7px;
+    padding: 6px 10px;
+  }
+  .nemesis .skull { font-size: 1rem; filter: drop-shadow(0 0 4px rgba(255,0,127,.6)); }
+  .nemesis .txt { font-size: 0.72rem; }
+  .nemesis .txt b { color: var(--secondary); }
+  .nemesis .cnt {
+    margin-left: auto; font-family: var(--font-mono); font-weight: 700;
+    color: var(--secondary); font-size: 0.82rem;
+  }
+
+  /* segment death bars --------------------------------------------- */
+  .bars { margin-top: 9px; display: flex; flex-direction: column; gap: 3px; }
+  .bar { display: flex; align-items: center; gap: 6px; font-size: 0.6rem; }
+  .bar .bn { width: 74px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar .track { flex: 1; height: 7px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; }
+  .bar .fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--secondary)); border-radius: 4px; }
+  .bar .bc { width: 22px; text-align: right; font-family: var(--font-mono); color: var(--text); }
+
+  .foot {
+    margin-top: 9px; text-align: center;
+    font-size: 0.52rem; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--muted); opacity: 0.7;
+  }
+
+  .done .now { background: rgba(56, 224, 138, 0.12); border-color: rgba(56, 224, 138, 0.5); }
+  .done .now .rt { color: #38e08a; }
+
+  #offline { text-align: center; color: var(--muted); font-size: 0.75rem; padding: 6px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+  <div id="wrap">
+    <div class="card" id="card">
+      <div class="head">
+        <span class="challenge" id="challenge">Challenge</span>
+        <span class="player" id="player"></span>
+      </div>
+
+      <div class="now" id="now">
+        <span class="seg"><span class="idx" id="seg">-/-</span> <span class="nm" id="segname"></span>
+          <span class="kgoal hidden" id="kgoal">0/0</span></span>
+        <span class="rt" id="runtime">0:00.000</span>
+      </div>
+
+      <div class="lbl">Records</div>
+      <div class="records">
+        <div class="rec"><div class="k">PB</div><div class="v" id="pb">--</div></div>
+        <div class="rec"><div class="k">Sum of Best</div><div class="v" id="sob">--</div></div>
+        <div class="rec gold"><div class="k">Golds</div><div class="v" id="golds">0/0</div></div>
+      </div>
+
+      <div class="lbl">Session</div>
+      <div class="grid">
+        <div class="stat bad"><span class="k">Deaths</span><span class="v" id="deaths">0</span></div>
+        <div class="stat good"><span class="k">Finishes</span><span class="v" id="finishes">0</span></div>
+        <div class="stat"><span class="k">Best run</span><span class="v" id="bestrun">--</span></div>
+        <div class="stat good"><span class="k">PBs</span><span class="v" id="pbs">0</span></div>
+        <div class="stat"><span class="k">Run deaths</span><span class="v" id="rundeaths">0</span></div>
+        <div class="stat"><span class="k">Streak</span><span class="v" id="streak">0</span></div>
+        <div class="stat bad"><span class="k">Deaths/hr</span><span class="v" id="dph">0</span></div>
+        <div class="stat"><span class="k">Finish&nbsp;%</span><span class="v" id="frate">0%</span></div>
+        <div class="stat"><span class="k">Playtime</span><span class="v" id="playtime">0:00</span></div>
+        <div class="stat"><span class="k">Attempts</span><span class="v" id="attempts">0</span></div>
+        <div class="stat"><span class="k">Kills</span><span class="v" id="kills">0</span></div>
+      </div>
+
+      <div class="nemesis hidden" id="nemesisBox">
+        <span class="skull">&#128128;</span>
+        <span class="txt">Nemesis: <b id="nemesis"></b></span>
+        <span class="cnt" id="nemesisCnt">0</span>
+      </div>
+
+      <div class="bars" id="bars"></div>
+
+      <div class="foot" id="foot">Waiting for run data...</div>
+    </div>
+  </div>
+
+<script>
+  // --- config: stats file sits next to this html; refresh a bit faster than the
+  //     engine writes so events show up promptly without hammering the disk.
+  var STATS_URL = "stats.json";
+  var REFRESH_MS = 1200;
+
+  function txt(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; }
+
+  function render(d) {
+    var card = document.getElementById("card");
+    document.getElementById("foot").textContent =
+      "Updated " + new Date((d.updated || 0) * 1000).toLocaleTimeString();
+
+    txt("challenge", d.challenge || "Challenge");
+    txt("player", d.player || "");
+
+    var live = d.live || {};
+    txt("seg", (live.segment || "-") + "/" + (live.segment_total || "-"));
+    txt("segname", live.segment_name || "");
+    txt("runtime", live.run_time || "0:00.000");
+    txt("rundeaths", live.run_deaths != null ? live.run_deaths : 0);
+    card.classList.toggle("done", live.state === "done");
+
+    // Goal of the current segment ("Score 1200/5000", "Kills 3/10"): the badge only shows
+    // for goal segments — for every other one the engine reports goal = null.
+    var kgoal = document.getElementById("kgoal");
+    var g = live.goal;
+    if (g && g.target > 0) {
+      kgoal.textContent = g.label + " " + g.current + "/" + g.target;
+      kgoal.classList.toggle("hit", g.current >= g.target);
+      kgoal.classList.remove("hidden");
+    } else {
+      kgoal.classList.add("hidden");
+    }
+
+    var r = d.records || {};
+    txt("pb", r.pb_total || "--");
+    txt("sob", r.sum_of_best_complete ? (r.sum_of_best || "--") : "--");
+    txt("golds", (r.golds != null ? r.golds : 0) + "/" + (r.segments != null ? r.segments : 0));
+
+    var s = d.session || {};
+    txt("deaths", s.deaths != null ? s.deaths : 0);
+    txt("finishes", s.finishes != null ? s.finishes : 0);
+    txt("bestrun", s.best_run || "--");
+    txt("pbs", s.pbs != null ? s.pbs : 0);
+    txt("streak", (s.current_streak != null ? s.current_streak : 0) +
+                  " (best " + (s.best_streak != null ? s.best_streak : 0) + ")");
+    txt("dph", s.deaths_per_hour != null ? s.deaths_per_hour : 0);
+    txt("kills", s.kills != null ? s.kills : 0);
+    txt("frate", (s.finish_rate != null ? s.finish_rate : 0) + "%");
+    txt("playtime", s.playtime || "0:00");
+    txt("attempts", s.runs_started != null ? s.runs_started : 0);
+
+    // nemesis
+    var nem = s.nemesis;
+    var nemBox = document.getElementById("nemesisBox");
+    if (nem && nem.segment && nem.deaths > 0) {
+      nemBox.classList.remove("hidden");
+      txt("nemesis", nem.segment);
+      txt("nemesisCnt", nem.deaths);
+    } else {
+      nemBox.classList.add("hidden");
+    }
+
+    // per-segment death bars (top offenders)
+    var bars = document.getElementById("bars");
+    bars.innerHTML = "";
+    var segs = (s.segment_deaths || []).slice().filter(function (x) { return x.deaths > 0; });
+    segs.sort(function (a, b) { return b.deaths - a.deaths; });
+    var max = segs.length ? segs[0].deaths : 1;
+    segs.slice(0, 5).forEach(function (x) {
+      var row = document.createElement("div"); row.className = "bar";
+      var bn = document.createElement("span"); bn.className = "bn"; bn.textContent = x.name;
+      var track = document.createElement("span"); track.className = "track";
+      var fill = document.createElement("span"); fill.className = "fill";
+      fill.style.width = Math.max(4, Math.round(x.deaths / max * 100)) + "%";
+      track.appendChild(fill);
+      var bc = document.createElement("span"); bc.className = "bc"; bc.textContent = x.deaths;
+      row.appendChild(bn); row.appendChild(track); row.appendChild(bc);
+      bars.appendChild(row);
+    });
+  }
+
+  function tick() {
+    fetch(STATS_URL + "?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("no stats"); return r.json(); })
+      .then(render)
+      .catch(function () {
+        document.getElementById("foot").textContent = "No stats file yet - start a challenge";
+      });
+  }
+
+  tick();
+  setInterval(tick, REFRESH_MS);
+</script>
+</body>
+</html>

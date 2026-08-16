@@ -44,6 +44,8 @@ private:
 	void ProcessShortcutPressed(EmulatorShortcut shortcut, uint32_t shortcutParam);
 	void ProcessShortcutReleased(EmulatorShortcut shortcut, uint32_t shortcutParam);
 
+	bool IsBlockedByChallengeMode(EmulatorShortcut shortcut);
+
 public:
 	ShortcutKeyHandler(Emulator* emu);
 	virtual ~ShortcutKeyHandler();

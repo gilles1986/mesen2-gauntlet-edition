@@ -46,6 +46,10 @@ namespace Mesen.Debugger.Utilities
 
 		public static T OpenDebugWindow<T>(Func<T> createWindow) where T : MesenWindow
 		{
+			if(ChallengeManager.IsActive) {
+				//Debugger/script/memory tools are locked down during a challenge.
+				return null!;
+			}
 			T wnd = CreateDebugWindow<T>(createWindow);
 			wnd.Show();
 			return wnd;
@@ -53,6 +57,10 @@ namespace Mesen.Debugger.Utilities
 
 		public static T GetOrOpenDebugWindow<T>(Func<T> createWindow) where T : MesenWindow
 		{
+			if(ChallengeManager.IsActive) {
+				//Debugger/script/memory tools are locked down during a challenge.
+				return null!;
+			}
 			foreach(Window wnd in _openedWindows.Keys) {
 				if(wnd is T) {
 					wnd.BringToFront();

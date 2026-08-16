@@ -335,6 +335,11 @@ extern "C"
 		return _emu->GetShortcutKeyHandler()->IsShortcutAllowed(shortcut, shortcutParam);
 	}
 
+	DllExport void __stdcall SetChallengeMode(bool enabled)
+	{
+		_emu->SetChallengeMode(enabled);
+	}
+
 	DllExport void __stdcall WriteLogEntry(char* message)
 	{
 		MessageManager::Log(message);

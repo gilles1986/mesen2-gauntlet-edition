@@ -1,0 +1,108 @@
+<Window
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:vm="using:Mesen.ViewModels"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d" d:DesignWidth="470" d:DesignHeight="560"
+	x:Class="Mesen.Windows.ChallengeTitleWindow"
+	Width="470" SizeToContent="Height" MaxHeight="660"
+	CanResize="False"
+	x:DataType="vm:ChallengeTitleViewModel"
+	Title="Start Challenge"
+>
+	<!-- One purple can't be high-contrast on both of Mesen's themes, so the accent is defined
+	     per variant. Mesen drives Avalonia's RequestedThemeVariant (App.axaml.cs), so these
+	     resolve automatically when the user switches theme. -->
+	<Window.Resources>
+		<ResourceDictionary>
+			<ResourceDictionary.ThemeDictionaries>
+				<!-- Mesen only ever sets Light or Dark; Default exists so a DynamicResource can
+				     never silently resolve to nothing if that changes. -->
+				<ResourceDictionary x:Key="Default">
+					<SolidColorBrush x:Key="ChallengeAccentBrush" Color="#5B3FA8" />
+					<SolidColorBrush x:Key="ChallengeMutedBrush" Color="#5A5A64" />
+				</ResourceDictionary>
+				<ResourceDictionary x:Key="Light">
+					<SolidColorBrush x:Key="ChallengeAccentBrush" Color="#5B3FA8" />
+					<SolidColorBrush x:Key="ChallengeMutedBrush" Color="#5A5A64" />
+				</ResourceDictionary>
+				<ResourceDictionary x:Key="Dark">
+					<SolidColorBrush x:Key="ChallengeAccentBrush" Color="#B49CF5" />
+					<SolidColorBrush x:Key="ChallengeMutedBrush" Color="#A8A8B4" />
+				</ResourceDictionary>
+			</ResourceDictionary.ThemeDictionaries>
+		</ResourceDictionary>
+	</Window.Resources>
+
+	<DockPanel Margin="16">
+		<!-- Pixel-art SNES pad, authored at exactly 256x132 and shown 1:1 (Stretch="None") with
+		     interpolation off, so every pixel stays square and the 1px outline survives.
+		     Regenerate via Challenge/tools/make-challenge-logo.ps1. -->
+		<Image DockPanel.Dock="Top"
+		       Source="/Assets/ChallengeLogo.png"
+		       Stretch="None"
+		       RenderOptions.BitmapInterpolationMode="None"
+		       HorizontalAlignment="Center" Margin="0 0 0 12" />
+
+		<TextBlock DockPanel.Dock="Top"
+		           Text="{Binding ChallengeName}"
+		           FontSize="21" FontWeight="Bold"
+		           TextWrapping="Wrap" TextAlignment="Center"
+		           HorizontalAlignment="Center" />
+
+		<TextBlock DockPanel.Dock="Top"
+		           Text="{Binding Date}"
+		           IsVisible="{Binding HasDate}"
+		           Foreground="{DynamicResource ChallengeMutedBrush}" FontSize="12"
+		           TextAlignment="Center" HorizontalAlignment="Center"
+		           Margin="0 2 0 0" />
+
+		<TextBlock DockPanel.Dock="Top"
+		           Text="{Binding Description}"
+		           IsVisible="{Binding HasDescription}"
+		           TextWrapping="Wrap" TextAlignment="Center"
+		           Margin="0 10 0 0" />
+
+		<StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+		            HorizontalAlignment="Right" Spacing="6" Margin="0 12 0 0">
+			<Button Content="Cancel" MinWidth="80" HorizontalContentAlignment="Center"
+			        IsCancel="True" Click="Cancel_Click" />
+			<Button Content="Start" MinWidth="80" HorizontalContentAlignment="Center"
+			        IsDefault="True" Click="Start_Click" />
+		</StackPanel>
+
+		<TextBlock DockPanel.Dock="Top" Text="Segments"
+		           Foreground="{DynamicResource ChallengeMutedBrush}" FontSize="12" Margin="0 14 0 4" />
+
+		<!-- Fills whatever height is left under MaxHeight; long challenges scroll here while
+		     the logo above and the buttons below stay put. -->
+		<Border BorderBrush="#40808080" BorderThickness="1">
+			<ScrollViewer HorizontalScrollBarVisibility="Disabled">
+				<ItemsControl ItemsSource="{Binding Segments}">
+					<ItemsControl.ItemTemplate>
+						<DataTemplate DataType="vm:ChallengeTitleSegment">
+							<Border BorderBrush="#40808080" BorderThickness="0 0 0 1" Padding="8 6">
+								<Grid ColumnDefinitions="Auto,1*">
+									<TextBlock Grid.Column="0" Text="{Binding Number}"
+									           Foreground="{DynamicResource ChallengeMutedBrush}" FontWeight="Bold"
+									           MinWidth="18" VerticalAlignment="Top" />
+									<StackPanel Grid.Column="1">
+										<TextBlock Text="{Binding Name}"
+										           FontWeight="Bold"
+										           Foreground="{DynamicResource ChallengeAccentBrush}"
+										           TextWrapping="Wrap" />
+										<TextBlock Text="{Binding Credit}"
+										           IsVisible="{Binding HasCredit}"
+										           Foreground="{DynamicResource ChallengeMutedBrush}" FontSize="12"
+										           TextWrapping="Wrap" Margin="0 1 0 0" />
+									</StackPanel>
+								</Grid>
+							</Border>
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+				</ItemsControl>
+			</ScrollViewer>
+		</Border>
+	</DockPanel>
+</Window>

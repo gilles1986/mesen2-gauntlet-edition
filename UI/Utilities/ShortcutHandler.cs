@@ -101,6 +101,7 @@ namespace Mesen.Utilities
 
 				case EmulatorShortcut.LoadStateFromFile: LoadStateFromFile(); break;
 				case EmulatorShortcut.SaveStateToFile: SaveStateToFile(); break;
+				case EmulatorShortcut.SaveRelayState: SaveRelayState(); break;
 
 				case EmulatorShortcut.LoadLastSession:
 					string filename = Path.Combine(ConfigManager.RecentGamesFolder, MainWindowModel.RomInfo.GetRomName() + ".rgd");
@@ -161,6 +162,29 @@ namespace Mesen.Utilities
 			if(filename != null && filename.Length > 0) {
 				EmuApi.SaveStateFile(filename);
 			}
+		}
+
+		private void SaveRelayState()
+		{
+			RomInfo romInfo = MainWindowModel.RomInfo;
+			ResourcePath romPath = romInfo.RomPath;
+			if(romPath.Path.Length == 0) {
+				return;
+			}
+
+			string statesDir = Path.Combine(romPath.Folder, "states");
+			Directory.CreateDirectory(statesDir);
+
+			string baseName = romInfo.GetRomName();
+			string filename = Path.Combine(statesDir, baseName + ".state");
+			int i = 2;
+			while(File.Exists(filename)) {
+				filename = Path.Combine(statesDir, baseName + "_" + i + ".state");
+				i++;
+			}
+
+			EmuApi.SaveStateFile(filename);
+			DisplayMessageHelper.DisplayMessage("Relay", "State -> " + Path.GetFileName(filename));
 		}
 
 		private static void ToggleRecordVideo()

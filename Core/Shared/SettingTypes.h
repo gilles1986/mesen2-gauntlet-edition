@@ -387,7 +387,7 @@ struct EmulationConfig
 	uint32_t TurboSpeed = 300;
 	uint32_t RewindSpeed = 100;
 
-	uint32_t RunAheadFrames = 0;
+	uint32_t RunAheadFrames = 2;
 };
 
 struct OverscanDimensions
@@ -1059,6 +1059,8 @@ enum class EmulatorShortcut
 	VsInsertCoin4,
 	StartRecordHdPack,
 	StopRecordHdPack,
+
+	SaveRelayState,
 
 	ShortcutCount,
 };

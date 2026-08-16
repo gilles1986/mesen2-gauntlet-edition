@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "LuaApi.h"
 #include "Lua/lua.hpp"
+#include "Shared/Audio/SoundMixer.h"
 #include "Debugger/LuaCallHelper.h"
 #include "Debugger/Debugger.h"
 #include "Debugger/IDebugger.h"
@@ -60,6 +61,7 @@ Emulator* LuaApi::_emu = nullptr;
 MemoryDumper* LuaApi::_memoryDumper = nullptr;
 ScriptingContext* LuaApi::_context = nullptr;
 Serializer LuaApi::_serializer(0, true, SerializeFormat::Map);
+std::unordered_map<std::string, PersistedValue> LuaApi::_persistedValues;
 
 enum class AccessCounterType
 {
@@ -165,6 +167,10 @@ int LuaApi::GetLibrary(lua_State* lua)
 		{ "getScriptDataFolder", LuaApi::GetScriptDataFolder },
 		{ "getRomInfo", LuaApi::GetRomInfo },
 		{ "getLogWindowLog", LuaApi::GetLogWindowLog },
+		{ "loadRom", LuaApi::LoadRom },
+		{ "setPersist", LuaApi::SetPersist },
+		{ "getPersist", LuaApi::GetPersist },
+		{ "muteAudio", LuaApi::MuteAudio },
 		{ NULL, NULL }
 	};
 
@@ -506,7 +512,8 @@ int LuaApi::MeasureString(lua_State* lua)
 int LuaApi::DrawString(lua_State* lua)
 {
 	LuaCallHelper l(lua);
-	l.ForceParamCount(8);
+	l.ForceParamCount(9);
+	int scale = l.ReadInteger(1);
 	int displayDelay = l.ReadInteger(0);
 	int frameCount = l.ReadInteger(1);
 	int maxWidth = l.ReadInteger(0);
@@ -518,7 +525,7 @@ int LuaApi::DrawString(lua_State* lua)
 	checkminparams(3);
 
 	int startFrame = _emu->GetFrameCount() + displayDelay;
-	GetHud()->DrawString(x, y, text, color, backColor, frameCount, startFrame, maxWidth);
+	GetHud()->DrawString(x, y, text, color, backColor, frameCount, startFrame, maxWidth, false, scale);
 
 	return l.ReturnCount();
 }
@@ -1221,5 +1228,113 @@ int LuaApi::GetMasterClock(lua_State* lua)
 	LuaCallHelper l(lua);
 	checkparams();
 	l.Return(_emu->GetMasterClock());
+	return l.ReturnCount();
+}
+
+int LuaApi::LoadRom(lua_State* lua)
+{
+	LuaCallHelper l(lua);
+	l.ForceParamCount(2);
+	string patchFile = l.ReadString();
+	string romFile = l.ReadString();
+	checkminparams(1);
+
+	_emu->QueueRomLoad(romFile, patchFile);
+
+	return l.ReturnCount();
+}
+
+int LuaApi::SetPersist(lua_State* lua)
+{
+	LuaCallHelper l(lua);
+	l.ForceParamCount(2);
+
+	int type = lua_type(lua, -1);
+	PersistedValue val;
+	if (type == LUA_TBOOLEAN) {
+		val.ValType = PersistedValue::Type::Bool;
+		val.BoolValue = l.ReadBool();
+	} else if (type == LUA_TNUMBER) {
+		val.ValType = PersistedValue::Type::Number;
+		val.NumberValue = l.ReadDouble();
+	} else if (type == LUA_TSTRING) {
+		val.ValType = PersistedValue::Type::String;
+		val.StringValue = l.ReadString();
+	} else {
+		val.ValType = PersistedValue::Type::Nil;
+		l.ReadString(); // Pop and discard
+	}
+
+	string key = l.ReadString();
+	checkparams();
+
+	if (val.ValType == PersistedValue::Type::Nil) {
+		_persistedValues.erase(key);
+	} else {
+		_persistedValues[key] = val;
+	}
+
+	return l.ReturnCount();
+}
+
+int LuaApi::GetPersist(lua_State* lua)
+{
+	LuaCallHelper l(lua);
+	string key = l.ReadString();
+	checkparams();
+
+	auto iter = _persistedValues.find(key);
+	if (iter != _persistedValues.end()) {
+		switch (iter->second.ValType) {
+			case PersistedValue::Type::Bool:
+				lua_pushboolean(lua, iter->second.BoolValue);
+				return 1;
+			case PersistedValue::Type::Number:
+				lua_pushnumber(lua, iter->second.NumberValue);
+				return 1;
+			case PersistedValue::Type::String:
+				lua_pushlstring(lua, iter->second.StringValue.c_str(), iter->second.StringValue.size());
+				return 1;
+			default:
+				break;
+		}
+	}
+	lua_pushnil(lua);
+	return 1;
+}
+
+string LuaApi::GetPersistString(const std::string& key)
+{
+	auto iter = _persistedValues.find(key);
+	if(iter == _persistedValues.end()) {
+		return "";
+	}
+
+	switch(iter->second.ValType) {
+		case PersistedValue::Type::Bool:
+			return iter->second.BoolValue ? "true" : "false";
+		case PersistedValue::Type::Number: {
+			double v = iter->second.NumberValue;
+			//Integer-valued numbers (e.g. frame counts) shouldn't get a decimal part.
+			if(v == (double)(int64_t)v) {
+				return std::to_string((int64_t)v);
+			}
+			return std::to_string(v);
+		}
+		case PersistedValue::Type::String:
+			return iter->second.StringValue;
+		default:
+			return "";
+	}
+}
+
+int LuaApi::MuteAudio(lua_State* lua)
+{
+	LuaCallHelper l(lua);
+	bool mute = l.ReadBool();
+	checkparams();
+
+	_emu->GetSoundMixer()->SetScriptMuted(mute);
+
 	return l.ReturnCount();
 }

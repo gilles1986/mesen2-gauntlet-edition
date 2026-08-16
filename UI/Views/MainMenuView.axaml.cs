@@ -50,5 +50,22 @@ namespace Mesen.Views
 				}
 			}
 		}
+
+		private void MnuChallenge_Opened(object sender, RoutedEventArgs e)
+		{
+			//SubmenuOpened bubbles, so it also fires for nested submenus (Export Run, Start
+			//Challenge, ...). Only act when the top-level Challenge menu itself opened - otherwise
+			//we'd overwrite a child submenu's items with the top-level list.
+			if(!ReferenceEquals(sender, e.Source)) {
+				return;
+			}
+			if(DataContext is MainMenuViewModel model && sender is MenuItem item) {
+				//Rebuild so the "Export Run" list (and Start/Practice submenus) reflect runs
+				//and installs from this session, then force the open menu to pick up the new list.
+				model.RefreshChallengeMenu();
+				item.ItemsSource = null;
+				item.ItemsSource = model.ChallengeMenuItems;
+			}
+		}
 	}
 }

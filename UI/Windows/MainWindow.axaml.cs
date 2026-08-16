@@ -272,10 +272,47 @@ namespace Mesen.Windows
 				Dispatcher.UIThread.Post(() => {
 					cmdLine.LoadFiles();
 					cmdLine.OnAfterInit(this);
+					cmdLine.OpenChallengeReplay(this);
+
+
 
 					if(ConfigManager.Config.Preferences.AutomaticallyCheckForUpdates) {
 						_model.MainMenu.CheckForUpdate(this, true);
 					}
+					CheckForChallengeStartupPrompts();
+				});
+			});
+		}
+
+		/// <summary>
+		/// The two things the Challenge Edition silently asks saphros.de at startup, in order:
+		///
+		/// 1. Is there a newer Challenge Edition build? (Only when automatic update checks are on.)
+		///    If the user accepts, the ChallengeUpdateWindow downloads it and relaunches the
+		///    updater, returning true - at which point we close (triggering app shutdown) so the
+		///    running exe unlocks and can be replaced.
+		/// 2. Is there an announcement to show? (Its own setting - see ChallengeConfig.ShowAnnouncements.)
+		///
+		/// Sequential on purpose: the main window can only own one modal dialog at a time, and an
+		/// accepted update takes the app down anyway. Any failure is swallowed - neither check may
+		/// block startup.
+		/// </summary>
+		private void CheckForChallengeStartupPrompts()
+		{
+			Task.Run(async () => {
+				ChallengeUpdater.ChallengeRelease? release = ConfigManager.Config.Preferences.AutomaticallyCheckForUpdates
+					? await ChallengeUpdater.CheckForUpdateAsync()
+					: null;
+
+				Dispatcher.UIThread.Post(async () => {
+					if(release != null) {
+						ChallengeUpdateWindow wnd = new(new ChallengeUpdateViewModel(release));
+						if(await wnd.ShowCenteredDialog<bool>(this)) {
+							Close();
+							return;   //updating: the app is shutting down, don't stack a popup on top
+						}
+					}
+					await ChallengeAnnouncementWindow.ShowStartupPopupAsync(this);
 				});
 			});
 		}
@@ -290,6 +327,7 @@ namespace Mesen.Windows
 
 				ConfigManager.Config.ApplyConfig();
 				cmdLine.LoadFiles();
+				cmdLine.OpenChallengeReplay(this);
 			});
 		}
 
@@ -299,6 +337,11 @@ namespace Mesen.Windows
 
 			switch(e.NotificationType) {
 				case ConsoleNotificationType.GameLoaded:
+					//Drives the embedded challenge engine: starts it after the bootstrap ROM
+					//has loaded, and re-injects it after every engine-triggered ROM switch.
+					//Runs on the same (notification) thread as the ScriptWindow's restart logic.
+					ChallengeManager.OnGameLoaded();
+
 					CheatCodes.ApplyCheats();
 					RomInfo romInfo = EmuApi.GetRomInfo();
 

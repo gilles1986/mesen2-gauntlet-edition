@@ -305,6 +305,14 @@
 	"returnValue": { "type": "Table", "description": "{ width = int, height = int }" }
 },
 {
+	"name": "muteAudio",
+	"category": "Miscellaneous",
+	"description": "Mutes or unmutes the emulator audio programmatically (doesn't affect permanent user settings).",
+	"parameters": [
+		{ "name": "mute", "type": "Bool", "description": "True to mute, false to unmute" }
+	]
+},
+{
 	"name": "read",
 	"category": "MemoryAccess",
 	"description": "Reads an 8-bit value from the specified address and memory type.\n\nNote: When using \"memType.[cpuName]\" memory types, side-effects can occur from reading a value. Use the \"memType.[cpuName]Debug\" enum values to avoid side-effects.",

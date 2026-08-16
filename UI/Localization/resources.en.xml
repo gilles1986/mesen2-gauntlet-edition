@@ -1901,6 +1901,27 @@ E
 		<Message ID="AddressHasOtherLabel">Another label exists for this address: {0}</Message>
 	</Messages>
 	<Enums>
+		<Enum ID="ChallengeHudSize">
+			<Value ID="Big">Big</Value>
+			<Value ID="Normal">Normal</Value>
+			<Value ID="Small">Small</Value>
+			<Value ID="Smaller">Smaller</Value>
+		</Enum>
+		<Enum ID="ChallengeResetButton">
+			<Value ID="None">None</Value>
+			<Value ID="A">A</Value>
+			<Value ID="B">B</Value>
+			<Value ID="X">X</Value>
+			<Value ID="Y">Y</Value>
+			<Value ID="L">L</Value>
+			<Value ID="R">R</Value>
+			<Value ID="Select">Select</Value>
+			<Value ID="Start">Start</Value>
+			<Value ID="Up">Up</Value>
+			<Value ID="Down">Down</Value>
+			<Value ID="Left">Left</Value>
+			<Value ID="Right">Right</Value>
+		</Enum>
 		<Enum ID="EmulatorShortcut">
 			<Value ID="FastForward">Fast Forward (Hold button)</Value>
 			<Value ID="ToggleFastForward">Toggle Fast Forward</Value>
@@ -1977,6 +1998,7 @@ E
 			<Value ID="SaveStateSlot10">Save State - Slot 10</Value>
 			<Value ID="SaveStateToFile">Save State to File</Value>
 			<Value ID="SaveStateDialog">Open Save State Menu</Value>
+			<Value ID="SaveRelayState">Save Relay State</Value>
 			<Value ID="LoadStateSlot1">Load State - Slot 1</Value>
 			<Value ID="LoadStateSlot2">Load State - Slot 2</Value>
 			<Value ID="LoadStateSlot3">Load State - Slot 3</Value>

@@ -16,6 +16,7 @@
 #include "Core/Debugger/CallstackManager.h"
 #include "Core/Debugger/LabelManager.h"
 #include "Core/Debugger/ScriptManager.h"
+#include "Core/Debugger/LuaApi.h"
 #include "Core/Debugger/Profiler.h"
 #include "Core/Debugger/IAssembler.h"
 #include "Core/Debugger/BaseEventManager.h"
@@ -457,6 +458,12 @@ extern "C"
 	DllExport void __stdcall RemoveScript(int32_t scriptId)
 	{
 		WithToolVoid(GetScriptManager(), RemoveScript(scriptId));
+	}
+
+	DllExport void __stdcall GetChallengePersist(char* key, char* outValue, uint32_t maxLength)
+	{
+		//Reads engine-set persisted values directly (static map, no debugger instance needed).
+		StringUtilities::CopyToBuffer(LuaApi::GetPersistString(key), outValue, maxLength);
 	}
 
 	DllExport void __stdcall GetScriptLog(int32_t scriptId, char* outScriptLog, uint32_t maxLength)

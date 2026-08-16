@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Media;
 using Mesen.Interop;
 using ReactiveUI.Fody.Helpers;
@@ -26,8 +26,8 @@ namespace Mesen.Config
 		[Reactive] public bool AutoReloadScriptWhenFileChanges { get; set; } = true;
 		[Reactive] public bool AutoRestartScriptAfterPowerCycle { get; set; } = true;
 
-		[Reactive] public bool AllowIoOsAccess { get; set; } = false;
-		[Reactive] public bool AllowNetworkAccess { get; set; } = false;
+		[Reactive] public bool AllowIoOsAccess { get; set; } = true;
+		[Reactive] public bool AllowNetworkAccess { get; set; } = true;
 
 		[Reactive] public bool ShowLineNumbers { get; set; } = false;
 

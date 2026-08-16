@@ -116,6 +116,7 @@ namespace Mesen.ViewModels
 				EmulatorShortcut.SaveStateSlot10,
 				EmulatorShortcut.SaveStateToFile,
 				EmulatorShortcut.SaveStateDialog,
+				EmulatorShortcut.SaveRelayState,
 
 				EmulatorShortcut.LoadStateSlot1,
 				EmulatorShortcut.LoadStateSlot2,

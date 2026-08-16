@@ -17,6 +17,8 @@ namespace Mesen.Windows
 	public class AboutWindow : MesenWindow
 	{
 		public string Version { get; }
+		public string ChallengeVersion { get; }
+		public string ChallengeBuildDate { get; }
 		public string BuildDate { get; }
 		public string RuntimeVersion { get; }
 		public string BuildSha { get; }
@@ -26,7 +28,11 @@ namespace Mesen.Windows
 
 		public AboutWindow()
 		{
+			//Version + build date of THIS Kaizo Challenge Edition (independent of the underlying
+			//Mesen core version) come from the embedded Challenge/version.txt — see ChallengeEditionInfo.
 			Version = EmuApi.GetMesenVersion().ToString();
+			ChallengeVersion = ChallengeEditionInfo.VersionString;
+			ChallengeBuildDate = ChallengeEditionInfo.BuildDate;
 			BuildDate = EmuApi.GetMesenBuildDate();
 			RuntimeVersion = ".NET " + Environment.Version;
 			RuntimeVersion += RuntimeFeature.IsDynamicCodeSupported ? " (JIT)" : " (AOT)";
@@ -70,6 +76,7 @@ namespace Mesen.Windows
 				new("ELFSharp", "", "MIT", "https://github.com/konrad-kruczynski/elfsharp"),
 				new("ymfm", "", "BSD 3-clause", "https://github.com/aaronsgiles/ymfm"),
 				new("GBA Multiply Algo (zaydlang)", "", "zlib", "https://github.com/zaydlang/multiplication-algorithm/"),
+				new("RomPatcher.js (BPS)", "Marc Robledo", "MIT", "https://github.com/marcrobledo/RomPatcher.js"),
 			};
 
 			LibraryList.Sort((a, b) => a.Name.CompareTo(b.Name));
@@ -109,6 +116,11 @@ namespace Mesen.Windows
 		private void OnMesenLinkTapped(object? sender, TappedEventArgs e)
 		{
 			ApplicationHelper.OpenBrowser("https://github.com/nesdev-org/MesenCE");
+		}
+
+		private void OnChallengeLinkTapped(object? sender, TappedEventArgs e)
+		{
+			ApplicationHelper.OpenBrowser("https://saphros.de/challenges");
 		}
 
 		private void OnCommitLinkTapped(object? sender, TappedEventArgs e)

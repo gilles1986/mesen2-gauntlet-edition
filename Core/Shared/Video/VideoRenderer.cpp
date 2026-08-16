@@ -127,7 +127,12 @@ FrameInfo VideoRenderer::GetEmuHudSize(FrameInfo baseFrameSize)
 bool VideoRenderer::DrawScriptHud(RenderedFrame& frame)
 {
 	bool needRedraw = false;
-	if(_lastScriptHudFrameNumber != frame.FrameNumber) {
+	//Redraw when the frame number changes (normal case) OR whenever emulation is running.
+	//The latter covers scripts that freeze the picture by reloading a savestate every frame
+	//(e.g. the challenge preview): that pins the frame number, which would otherwise skip the
+	//redraw and leave an animated HUD (progress bar, timer) frozen on its first value. When the
+	//emulator is truly paused the frame number is stable and we keep the HUD as-is.
+	if(_lastScriptHudFrameNumber != frame.FrameNumber || !_emu->IsPaused()) {
 		//Clear+draw HUD for scripts
 		//-Only when frame number changes (to prevent the HUD from disappearing when paused, etc.)
 		//-Only when commands are queued, otherwise skip drawing/clearing to avoid wasting CPU time

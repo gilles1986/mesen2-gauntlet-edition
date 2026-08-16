@@ -32,6 +32,10 @@ public class CommandLineHelper
 	public List<string> LuaScriptsToLoad { get; private set; } = new();
 	public List<string> FilesToLoad { get; private set; } = new();
 
+	/// <summary>A .creplay passed on the command line (double-clicked, or handed over by another
+	/// instance). Opens the replay prompt instead of loading a ROM - see OpenChallengeReplay.</summary>
+	public string? ChallengeReplayToOpen { get; private set; } = null;
+
 	private List<string> _errorMessages = new();
 
 	public CommandLineHelper(string[] args, bool forStartup)
@@ -50,9 +54,16 @@ public class CommandLineHelper
 			}
 
 			if(File.Exists(absPath)) {
-				switch(Path.GetExtension(absPath).ToLowerInvariant()) {
-					case ".lua": LuaScriptsToLoad.Add(absPath); break;
-					default: FilesToLoad.Add(absPath); break;
+				string extension = Path.GetExtension(absPath).ToLowerInvariant();
+				if(extension == "." + FileDialogHelper.ChallengeReplayExt) {
+					//A replay package is not a ROM - it must not reach LoadFiles, or the emulator
+					//would try to boot a zip. It opens the replay prompt after the window is up.
+					ChallengeReplayToOpen = absPath;
+				} else {
+					switch(extension) {
+						case ".lua": LuaScriptsToLoad.Add(absPath); break;
+						default: FilesToLoad.Add(absPath); break;
+					}
 				}
 			} else if(arg.StartsWith("-") || arg.StartsWith("/")) {
 				string switchArg = ConvertArg(arg).ToLowerInvariant();
@@ -164,6 +175,24 @@ public class CommandLineHelper
 				EmuApi.ExecuteShortcut(new ExecuteShortcutParams() { Shortcut = Config.Shortcuts.EmulatorShortcut.LoadLastSession });
 			});
 		}
+	}
+
+	/// <summary>
+	/// Opens the replay that was passed on the command line, if any. Called once the main window
+	/// exists, because the prompt is a modal dialog - and it brings the window forward first, so
+	/// a double-click (or a click on the website) surfaces an already-running emulator instead of
+	/// leaving the dialog hidden behind the browser.
+	/// </summary>
+	public void OpenChallengeReplay(MainWindow wnd)
+	{
+		if(ChallengeReplayToOpen == null) {
+			return;
+		}
+
+		string path = ChallengeReplayToOpen;
+		ChallengeReplayToOpen = null;   //one shot - a re-entrant call must not open it twice
+		wnd.BringToFront();
+		_ = ChallengeReplayLauncher.OpenAsync(wnd, path);
 	}
 
 	public void LoadFiles()

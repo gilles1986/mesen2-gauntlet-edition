@@ -119,8 +119,66 @@ void ShortcutKeyHandler::ProcessRunSingleFrame()
 	_emu->PauseOnNextFrame();
 }
 
+bool ShortcutKeyHandler::IsBlockedByChallengeMode(EmulatorShortcut shortcut)
+{
+	//While a challenge is active, block all shortcuts that could be used to cheat
+	//(savestates, rewind, speed changes, frame advance, cheats, loading other files,
+	//resetting/power-cycling the console outside of the challenge's own reset combo).
+	//The challenge engine drives resets via controller input, not via these shortcuts.
+	switch(shortcut) {
+		case EmulatorShortcut::FastForward:
+		case EmulatorShortcut::Rewind:
+		case EmulatorShortcut::RewindTenSecs:
+		case EmulatorShortcut::RewindOneMin:
+		case EmulatorShortcut::ToggleFastForward:
+		case EmulatorShortcut::ToggleRewind:
+		case EmulatorShortcut::IncreaseSpeed:
+		case EmulatorShortcut::DecreaseSpeed:
+		case EmulatorShortcut::MaxSpeed:
+		case EmulatorShortcut::RunSingleFrame:
+		case EmulatorShortcut::ToggleCheats:
+		case EmulatorShortcut::OpenFile:
+		case EmulatorShortcut::LoadLastSession:
+		case EmulatorShortcut::Reset:
+		case EmulatorShortcut::PowerCycle:
+		case EmulatorShortcut::ReloadRom:
+		case EmulatorShortcut::PowerOff:
+		case EmulatorShortcut::ExecReset:
+		case EmulatorShortcut::ExecPowerCycle:
+		case EmulatorShortcut::ExecReloadRom:
+		case EmulatorShortcut::ExecPowerOff:
+		case EmulatorShortcut::ToggleRecordVideo:
+		case EmulatorShortcut::ToggleRecordAudio:
+		case EmulatorShortcut::ToggleRecordMovie:
+		case EmulatorShortcut::SaveState:
+		case EmulatorShortcut::LoadState:
+		case EmulatorShortcut::SaveStateToFile:
+		case EmulatorShortcut::SaveStateDialog:
+		case EmulatorShortcut::LoadStateFromFile:
+		case EmulatorShortcut::LoadStateDialog:
+		case EmulatorShortcut::MoveToNextStateSlot:
+		case EmulatorShortcut::MoveToPreviousStateSlot:
+		case EmulatorShortcut::SaveRelayState:
+			return true;
+
+		default:
+			//Block the whole save/load/select state slot ranges
+			if(shortcut >= EmulatorShortcut::SaveStateSlot1 && shortcut <= EmulatorShortcut::LoadStateSlotAuto) {
+				return true;
+			}
+			if(shortcut >= EmulatorShortcut::SelectSaveSlot1 && shortcut <= EmulatorShortcut::SelectSaveSlot10) {
+				return true;
+			}
+			return false;
+	}
+}
+
 bool ShortcutKeyHandler::IsShortcutAllowed(EmulatorShortcut shortcut, uint32_t shortcutParam)
 {
+	if(_emu->IsChallengeMode() && IsBlockedByChallengeMode(shortcut)) {
+		return false;
+	}
+
 	bool isRunning = _emu->IsRunning();
 	bool isNetplayClient = _emu->GetGameClient()->Connected();
 	bool isMoviePlaying = _emu->GetMovieManager()->Playing();
@@ -185,6 +243,7 @@ bool ShortcutKeyHandler::IsShortcutAllowed(EmulatorShortcut shortcut, uint32_t s
 		case EmulatorShortcut::SaveStateDialog:
 		case EmulatorShortcut::SaveStateToFile:
 		case EmulatorShortcut::SaveState:
+		case EmulatorShortcut::SaveRelayState:
 			return isRunning;
 
 		case EmulatorShortcut::LoadStateSlot1:

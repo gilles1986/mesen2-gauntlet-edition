@@ -87,6 +87,7 @@ namespace Mesen.Interop
 
 		[DllImport(DllPath)] public static extern void ExecuteShortcut(ExecuteShortcutParams p);
 		[DllImport(DllPath)][return: MarshalAs(UnmanagedType.I1)] public static extern bool IsShortcutAllowed(EmulatorShortcut shortcut, UInt32 shortcutParam = 0);
+		[DllImport(DllPath)] public static extern void SetChallengeMode([MarshalAs(UnmanagedType.I1)] bool enabled);
 
 		[DllImport(DllPath, EntryPoint = "GetLog")] private static extern void GetLogWrapper(IntPtr outLog, Int32 maxLength);
 		public static string GetLog() { return Utf8Utilities.CallStringApi(GetLogWrapper, 100000); }

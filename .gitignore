@@ -190,3 +190,13 @@ packages/*
 
 TestHelper/*
 UI/Dependencies.zip
+# Local build secret; see UI/Utilities/ChallengeSecrets.cs.
+UI/Utilities/ChallengeSecrets.Local.cs
+
+# Local notes, scratch work and deploy helpers.
+Challenge/*.md
+Challenge/games.lua
+CONTEXT.md
+/docs/
+.scratch/
+deploy-*.bat

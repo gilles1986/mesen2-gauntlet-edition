@@ -47,6 +47,7 @@ namespace Mesen.Config
 		[Reactive] public NetplayConfig Netplay { get; set; } = new();
 		[Reactive] public HistoryViewerConfig HistoryViewer { get; set; } = new();
 		[Reactive] public MainWindowConfig MainWindow { get; set; } = new();
+		[Reactive] public ChallengeConfig Challenge { get; set; } = new();
 
 		public DefaultKeyMappingType DefaultKeyMappings { get; set; } = DefaultKeyMappingType.Xbox | DefaultKeyMappingType.ArrowKeys;
 

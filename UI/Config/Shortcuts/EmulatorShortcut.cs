@@ -141,6 +141,8 @@ namespace Mesen.Config.Shortcuts
 		StartRecordHdPack,
 		StopRecordHdPack,
 
+		SaveRelayState,
+
 		LastValidValue,
 		[Obsolete] LoadRandomGame,
 	}

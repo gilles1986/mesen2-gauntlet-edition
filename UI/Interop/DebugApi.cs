@@ -194,6 +194,16 @@ namespace Mesen.Interop
 			}
 		}
 
+		[DllImport(DllPath, EntryPoint = "GetChallengePersist")] private static extern void GetChallengePersistWrapper([MarshalAs(UnmanagedType.LPUTF8Str)] string key, IntPtr outValue, Int32 maxLength);
+		public unsafe static string GetChallengePersist(string key)
+		{
+			byte[] outValue = new byte[10000];
+			fixed(byte* ptr = outValue) {
+				DebugApi.GetChallengePersistWrapper(key, (IntPtr)ptr, outValue.Length);
+				return Utf8Utilities.PtrToStringUtf8((IntPtr)ptr);
+			}
+		}
+
 		[DllImport(DllPath)] public static extern Int64 EvaluateExpression([MarshalAs(UnmanagedType.LPUTF8Str)] string expression, CpuType cpuType, out EvalResultType resultType, [MarshalAs(UnmanagedType.I1)] bool useCache);
 
 		[DllImport(DllPath)] public static extern DebuggerFeatures GetDebuggerFeatures(CpuType type);

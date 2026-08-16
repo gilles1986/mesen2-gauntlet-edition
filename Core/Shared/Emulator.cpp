@@ -133,7 +133,11 @@ void Emulator::Run()
 	_lastFrameTimer.Reset();
 
 	while(!_stopFlag) {
-		bool useRunAhead = _settings->GetEmulationConfig().RunAheadFrames > 0 && !_debugger && !_audioPlayerHud && !_rewindManager->IsRewinding() && _settings->GetEmulationSpeed() > 0 && _settings->GetEmulationSpeed() <= 100;
+		//Normally run-ahead is disabled whenever a debugger is active, and the
+		//challenge engine runs as a debugger script - so challenges never had run-ahead. Allow
+		//it in challenge mode (ProcessEvent + RunFrameWithRunAhead keep the engine on the
+		//committed frame so the timer stays correct).
+		bool useRunAhead = _settings->GetEmulationConfig().RunAheadFrames > 0 && (!_debugger || _challengeMode) && !_audioPlayerHud && !_rewindManager->IsRewinding() && _settings->GetEmulationSpeed() > 0 && _settings->GetEmulationSpeed() <= 100;
 		if(useRunAhead) {
 			RunFrameWithRunAhead();
 		} else {
@@ -185,6 +189,16 @@ void Emulator::ProcessAutoSaveState()
 
 bool Emulator::ProcessSystemActions()
 {
+	if(!_pendingRomToLoad.empty()) {
+		string rom = _pendingRomToLoad;
+		string patch = _pendingPatchToLoad;
+		_pendingRomToLoad.clear();
+		_pendingPatchToLoad.clear();
+
+		LoadRom(rom, patch, false, false);
+		return true;
+	}
+
 	if(_systemActionManager->IsResetPressed()) {
 		Reset();
 
@@ -206,10 +220,27 @@ void Emulator::RunFrameWithRunAhead()
 	stringstream runAheadState;
 	uint32_t frameCount = _settings->GetEmulationConfig().RunAheadFrames;
 
-	//Run a single frame and save the state (no audio/video)
+	//Mark the whole look-ahead sequence so ProcessEvent can suppress challenge
+	//script callbacks on every frame except the committed one below.
+	_isRunAheadActive = true;
+
+	//Run a single frame and save the state (no audio/video). THIS is the committed frame: its
+	//state is what we roll back to, so challenge-engine logic/savestates must act here.
 	_isRunAheadFrame = true;
+	_isRunAheadCommitFrame = true;
 	_console->RunFrame();
+	_isRunAheadCommitFrame = false;
 	Serialize(runAheadState, false, 0);
+
+	//SPIKE (AP7 perf): run the look-ahead + display frames WITHOUT debugger instrumentation.
+	//A challenge forces the debugger on (the engine is a script) and run-ahead runs the frame
+	//several times - but these frames fire no script callbacks (commit-frame guard above) and
+	//hit no breakpoints in challenge mode, so their per-instruction / per-memory-access debugger
+	//hooks (_internalDebugger, Emulator.h) are pure overhead. Hiding it lets them run at normal
+	//(no-debugger) speed; only the committed frame A pays the debugger cost. In non-challenge
+	//run-ahead there is no debugger, so savedDebugger is null and this is a no-op.
+	Debugger* savedDebugger = _internalDebugger;
+	_internalDebugger = nullptr;
 
 	while(frameCount > 1) {
 		//Run extra frames if the requested run ahead frame count is higher than 1
@@ -220,6 +251,9 @@ void Emulator::RunFrameWithRunAhead()
 
 	//Run one frame normally (with audio/video output)
 	_console->RunFrame();
+
+	_internalDebugger = savedDebugger;   //restore before the next committed frame / rollback
+
 	_rewindManager->ProcessEndOfFrame();
 	_historyViewer->ProcessEndOfFrame();
 
@@ -230,6 +264,8 @@ void Emulator::RunFrameWithRunAhead()
 		Deserialize(runAheadState, SaveStateManager::FileFormatVersion, false);
 		_isRunAheadFrame = false;
 	}
+
+	_isRunAheadActive = false;
 }
 
 void Emulator::OnBeforeSendFrame()
@@ -1184,6 +1220,19 @@ void Emulator::ProcessAudioPlayerAction(AudioPlayerActionParams p)
 
 void Emulator::ProcessEvent(EventType type, std::optional<CpuType> cpuType)
 {
+	//During run-ahead, only the committed frame counts for the challenge engine.
+	//The look-ahead + display frames get rolled back, so firing startFrame/inputPolled there
+	//would make the timer count multiple times per shown frame and drop savestate ops. Keep
+	//the engine on the committed frame. (Outside run-ahead this guard is a no-op.)
+	//
+	//Note: Memory and execution callbacks do not need a run-ahead guard because runInExec
+	//registers its callbacks from onFrame (which is only dispatched on the committed frame)
+	//and they execute and self-remove in that same frame, so they automatically run only
+	//on the committed frame.
+	if(_isRunAheadActive && !_isRunAheadCommitFrame) {
+		return;
+	}
+
 	if(_internalDebugger) {
 		_internalDebugger->ProcessEvent(type, cpuType);
 	}

@@ -6,6 +6,7 @@
 #include "Shared/Emulator.h"
 #include "Shared/Video/DebugHud.h"
 #include "Shared/MemoryOperationType.h"
+#include "Shared/Audio/SoundMixer.h"
 
 ScriptManager::ScriptManager(Debugger* debugger)
 {
@@ -59,6 +60,7 @@ void ScriptManager::RemoveScript(int32_t scriptId)
 			script->ProcessEvent(EventType::ScriptEnded, _debugger->GetMainCpuType());
 			_debugger->GetEmulator()->GetDebugHud()->ClearScreen();
 			_debugger->GetEmulator()->GetScriptHud()->ClearScreen();
+			_debugger->GetEmulator()->GetSoundMixer()->SetScriptMuted(false);
 			return true;
 		}
 		return false;

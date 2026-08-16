@@ -1,57 +1,54 @@
-# Mesen Community Edition
+# Mesen 2 — Gauntlet Edition
 
-Mesen is a multi-system emulator for Windows, Linux, and macOS. It supports NES, SNES, Game Boy (GB/SGB/GBC), Game Boy Advance, PC Engine, SMS/Game Gear, and WonderSwan (WS/WSC).
+A fork of [Mesen Community Edition](https://github.com/nesdev-org/MesenCE) (itself a fork of
+[Mesen 2](https://github.com/SourMesen/Mesen2) by Sour) that turns the emulator into a
+purpose-built platform for timed Kaizo/speedrun challenges.
 
-MesenCE is a community-managed fork based on Mesen2, created to maintain and expand this emulator into the future.
+Everything the upstream emulator does — NES, SNES, Game Boy (GB/SGB/GBC), Game Boy Advance,
+PC Engine, SMS/Game Gear and WonderSwan emulation — still works exactly as before. The
+Gauntlet Edition adds a challenge layer on top of it.
 
-## Releases
+## What this fork adds
 
-The latest stable version is available from the [releases page on GitHub](https://github.com/nesdev-org/MesenCE/releases).
+- **Challenge engine** — an embedded Lua engine (`Challenge/relay.lua`) that chains ROM
+  segments together via savestate drop-in, counts frames, and draws the in-game HUD,
+  done-screen and achievement popups.
+- **Lockdown mode** — while a challenge is running the C++ core blocks savestates, rewind,
+  speed changes, cheats and the debugger, so runs stay comparable.
+- **Timing, splits and personal bests** — per-segment PBs, sum-of-best, attempt counters.
+- **Ghosts and replays** — live PB ghost overlay, shareable ghosts, and a `.creplay` replay
+  format with a protocol handler so a replay can be opened straight from a link.
+- **Challenge packages** — `.cha` archives containing segment definitions, savestates and BPS
+  patches, applied to a clean base ROM at install time. Browse-and-install from a catalog or
+  import a file manually.
+- **Leaderboard submission** — signed run submission, an offline retry queue, and an optional
+  Twitch account link using the OAuth device-authorization flow.
+- **Stream integration** — an OBS browser-source overlay written next to the executable.
 
-## Development Builds
+## Building
 
-[![Mesen](https://github.com/nesdev-org/MesenCE/actions/workflows/build.yml/badge.svg)](https://github.com/nesdev-org/MesenCE/actions/workflows/build.yml)
+Build requirements and steps are unchanged from upstream — see [COMPILING.md](COMPILING.md).
+`build.bat` additionally packages the release ZIP; it locates MSBuild through `vswhere`, so a
+standard Visual Studio 2022 installation needs no configuration.
 
-#### <ins>Native builds</ins> (recommended) ####
+The challenge engine ships as an embedded resource, so `build.bat` has to run again after any
+change to `Challenge/relay.lua` for the new engine to end up inside the executable.
 
-These builds don't require .NET to be installed. They load more quickly and are recommended over the .NET builds.  
+The leaderboard signing key is not part of this repository:
+`UI/Utilities/ChallengeSecrets.cs` carries a placeholder, and that file explains how to supply
+your own. Everything in the emulator works normally with the placeholder in place; only
+leaderboard submissions are rejected, because the signature will not match.
 
-* [Windows 10 / 11](https://nightly.link/nesdev-org/MesenCE/workflows/build/master/Mesen%20%28Windows%20-%20net8.0%20-%20AoT%29.zip)  
-* [Linux x64](https://nightly.link/nesdev-org/MesenCE/workflows/build/master/Mesen%20%28Linux%20-%20ubuntu-22.04%20-%20clang_aot%29.zip)  (requires **SDL2**)  
-* [Linux ARM64](https://nightly.link/nesdev-org/MesenCE/workflows/build/master/Mesen%20%28Linux%20-%20ubuntu-22.04-arm%20-%20clang_aot%29.zip)  (requires **SDL2**)  
-* [macOS - Intel](https://nightly.link/nesdev-org/MesenCE/workflows/build/master/Mesen%20%28macOS%20-%20macos-15-intel%20-%20clang_aot%29.zip)  (requires **SDL2**)  
-* [macOS - Apple Silicon](https://nightly.link/nesdev-org/MesenCE/workflows/build/master/Mesen%20%28macOS%20-%20macos-15%20-%20clang_aot%29.zip)  (requires **SDL2**)  
+## Modifications
 
-#### <ins>.NET builds</ins> ####
-
-These builds use .NET, which for some builds comes bundled and for others must be installed.  
-They all require **.NET 8** except the Windows 7 / 8 build, which requires **.NET 6**.  
-For Linux and macOS, **SDL2** must also be installed. For AppImage builds, **FUSE** (such as libfuse2) must be installed.
-
-* [Windows 7 / 8](https://nightly.link/nesdev-org/MesenCE/workflows/build/master/Mesen%20%28Windows%20-%20net6.0%29.zip)  (requires **.NET 6**)
-* [Linux x64 - AppImage](https://nightly.link/nesdev-org/MesenCE/workflows/build/master/Mesen%20(Linux%20x64%20-%20AppImage).zip)  (requires **FUSE** and **SDL2**)
-* [Linux ARM64](https://nightly.link/nesdev-org/MesenCE/workflows/build/master/Mesen%20%28Linux%20-%20ubuntu-22.04-arm%20-%20clang%29.zip)  (requires **.NET 8** and **SDL2**)
-* [Linux ARM64 - AppImage](https://nightly.link/nesdev-org/MesenCE/workflows/build/master/Mesen%20(Linux%20ARM64%20-%20AppImage).zip)  (requires **FUSE** and **SDL2**)
-
-
-#### <ins>Notes</ins> ####
-
-Other builds are also available in the [Actions](https://github.com/nesdev-org/MesenCE/actions) tab.
-
-* **MacOS**: Development builds are self-signed and will require approval via Gatekeeper before they are able to be run.  
-* **SteamOS**: See [SteamOS.md](SteamOS.md)  
-
-## Compiling
-
-See [COMPILING.md](COMPILING.md)
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md)
+This is a modified version of Mesen Community Edition, forked in 2026 at commit `95ceb59d` and
+extended with the challenge system described above. Mesen and Mesen CE are the work of Sour and
+the MesenCE contributors; these modifications are not endorsed by them.
 
 ## License
 
-Mesen is available under the GPL V3 license.  Full text here: <http://www.gnu.org/licenses/gpl-3.0.en.html>
+Mesen is available under the GPL V3 license. Full text here:
+<http://www.gnu.org/licenses/gpl-3.0.en.html>
 
 Copyright (C) 2014-2025 Sour, 2026 contributors
 

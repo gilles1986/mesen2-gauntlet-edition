@@ -1,0 +1,85 @@
+<Window
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:vm="using:Mesen.ViewModels"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d" d:DesignWidth="470" d:DesignHeight="340"
+	x:Class="Mesen.Windows.ChallengeAnnouncementWindow"
+	Width="470" SizeToContent="Height" MaxHeight="620"
+	CanResize="False"
+	x:DataType="vm:ChallengeAnnouncementViewModel"
+	Title="Challenge Announcement"
+>
+	<!-- Muted text has to be defined per theme variant to stay readable on both; Mesen drives
+	     Avalonia's RequestedThemeVariant (App.axaml.cs), so these resolve automatically when the
+	     user switches theme. The badge colors come from the view model instead - they carry white
+	     text and are dark enough for either theme. -->
+	<Window.Resources>
+		<ResourceDictionary>
+			<ResourceDictionary.ThemeDictionaries>
+				<ResourceDictionary x:Key="Default">
+					<SolidColorBrush x:Key="ChallengeMutedBrush" Color="#5A5A64" />
+				</ResourceDictionary>
+				<ResourceDictionary x:Key="Light">
+					<SolidColorBrush x:Key="ChallengeMutedBrush" Color="#5A5A64" />
+				</ResourceDictionary>
+				<ResourceDictionary x:Key="Dark">
+					<SolidColorBrush x:Key="ChallengeMutedBrush" Color="#A8A8B4" />
+				</ResourceDictionary>
+			</ResourceDictionary.ThemeDictionaries>
+		</ResourceDictionary>
+	</Window.Resources>
+
+	<DockPanel Margin="16">
+		<StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasBadge}" Margin="0 0 0 8">
+			<Border Background="{Binding BadgeBrush}" CornerRadius="3" Padding="7 2">
+				<TextBlock Text="{Binding BadgeText}" Foreground="White" FontSize="11" FontWeight="Bold" />
+			</Border>
+		</StackPanel>
+
+		<TextBlock DockPanel.Dock="Top" Text="{Binding Title}"
+		           FontSize="18" FontWeight="Bold" TextWrapping="Wrap" />
+
+		<TextBlock DockPanel.Dock="Top" Text="{Binding DateRange}" IsVisible="{Binding HasDateRange}"
+		           Foreground="{DynamicResource ChallengeMutedBrush}" FontSize="12" Margin="0 3 0 0" />
+
+		<StackPanel DockPanel.Dock="Bottom" Margin="0 14 0 0">
+			<TextBlock Text="{Binding Status}" IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+			           Foreground="{DynamicResource ChallengeMutedBrush}" FontSize="12"
+			           TextWrapping="Wrap" Margin="0 0 0 6" />
+			<StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+				<!-- Only a published challenge has something to download; teasers show no action. -->
+				<StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasChallengeAction}">
+					<Button Content="Install Challenge" MinWidth="120" HorizontalContentAlignment="Center"
+					        IsVisible="{Binding !IsInstalled}" IsEnabled="{Binding !Busy}" Click="Install_Click" />
+					<Button Content="Play Challenge" MinWidth="120" HorizontalContentAlignment="Center"
+					        IsVisible="{Binding IsInstalled}" IsEnabled="{Binding !Busy}" Click="Play_Click" />
+				</StackPanel>
+				<Button Content="More info" MinWidth="80" HorizontalContentAlignment="Center"
+				        IsVisible="{Binding HasLink}" Click="Link_Click" />
+				<Button Content="Close" MinWidth="80" HorizontalContentAlignment="Center"
+				        IsCancel="True" IsDefault="True" Click="Close_Click" />
+			</StackPanel>
+		</StackPanel>
+
+		<!-- Message + linked-challenge block. Scrolls under MaxHeight so a long announcement can
+		     never push the buttons off screen. -->
+		<ScrollViewer HorizontalScrollBarVisibility="Disabled" Margin="0 12 0 0">
+			<StackPanel>
+				<TextBlock Text="{Binding Message}" IsVisible="{Binding HasMessage}" TextWrapping="Wrap" />
+
+				<Border IsVisible="{Binding HasChallengeInfo}" BorderBrush="#40808080" BorderThickness="1"
+				        Padding="10 8" Margin="0 12 0 0">
+					<StackPanel>
+						<TextBlock Text="{Binding ChallengeName}" IsVisible="{Binding HasChallengeName}"
+						           FontWeight="Bold" TextWrapping="Wrap" />
+						<TextBlock Text="{Binding TeaserText}" IsVisible="{Binding HasTeaserText}"
+						           Foreground="{DynamicResource ChallengeMutedBrush}" TextWrapping="Wrap"
+						           Margin="0 2 0 0" />
+					</StackPanel>
+				</Border>
+			</StackPanel>
+		</ScrollViewer>
+	</DockPanel>
+</Window>

@@ -1,5 +1,7 @@
 #pragma once
 #include "pch.h"
+#include <unordered_map>
+#include <string>
 #include "Shared/CpuType.h"
 #include "Shared/SettingTypes.h"
 #include "Shared/MemoryType.h"
@@ -12,6 +14,15 @@ class MemoryDumper;
 class DebugHud;
 class BaseVideoFilter;
 class Serializer;
+
+struct PersistedValue
+{
+	enum class Type { Nil, Number, Bool, String };
+	Type ValType = Type::Nil;
+	double NumberValue = 0;
+	bool BoolValue = false;
+	std::string StringValue;
+};
 
 class LuaApi
 {
@@ -102,6 +113,16 @@ public:
 
 	static int GetCdlData(lua_State* lua);
 
+	static int LoadRom(lua_State* lua);
+	static int SetPersist(lua_State* lua);
+	static int GetPersist(lua_State* lua);
+	static int MuteAudio(lua_State* lua);
+
+	//Reads a persisted value as a string (numbers/bools stringified, missing -> "").
+	//Used by the C# ChallengeManager to read authoritative run data set by the engine,
+	//instead of trusting a user-writable file.
+	static std::string GetPersistString(const std::string& key);
+
 private:
 	static FrameInfo InternalGetScreenSize();
 
@@ -110,6 +131,8 @@ private:
 	static MemoryDumper* _memoryDumper;
 	static ScriptingContext* _context;
 	static Serializer _serializer;
+
+	static std::unordered_map<std::string, PersistedValue> _persistedValues;
 
 	static std::pair<unique_ptr<BaseVideoFilter>, FrameInfo> GetRenderedFrame();
 	template<typename T> static void GenerateEnumDefinition(lua_State* lua, string enumName, unordered_set<T> excludedValues = {});

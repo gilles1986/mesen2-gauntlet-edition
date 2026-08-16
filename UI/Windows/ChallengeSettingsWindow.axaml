@@ -1,0 +1,111 @@
+<Window
+	xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:c="using:Mesen.Controls"
+	xmlns:dc="using:Mesen.Debugger.Controls"
+	xmlns:vm="using:Mesen.ViewModels"
+	xmlns:l="using:Mesen.Localization"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	mc:Ignorable="d" d:DesignWidth="380" d:DesignHeight="150"
+	x:Class="Mesen.Windows.ChallengeSettingsWindow"
+	Width="380" Height="812"
+	CanResize="False"
+	x:DataType="vm:ChallengeSettingsViewModel"
+	Title="Challenge Settings"
+>
+	<DockPanel Margin="8">
+		<StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 10 0 0">
+			<Button MinWidth="70" HorizontalContentAlignment="Center" Click="Ok_OnClick" Content="OK" />
+			<Button MinWidth="70" HorizontalContentAlignment="Center" IsCancel="True" Click="Cancel_OnClick" Content="Cancel" />
+		</StackPanel>
+
+		<StackPanel>
+			<TextBlock Text="Twitch Account" Foreground="Gray" Margin="0 0 0 3" />
+			<StackPanel IsVisible="{Binding !Config.IsTwitchLinked}">
+				<StackPanel Orientation="Horizontal" IsVisible="{Binding !IsLoggingIn}">
+					<Button Content="Login with Twitch" Click="LoginWithTwitch_OnClick" />
+				</StackPanel>
+				<StackPanel Orientation="Horizontal" IsVisible="{Binding IsLoggingIn}">
+					<Button Content="Cancel" Click="CancelLogin_OnClick" Margin="0 0 8 0" />
+					<TextBlock Text="{Binding LoginStatusText}" VerticalAlignment="Center" TextWrapping="Wrap" />
+				</StackPanel>
+				<TextBlock Text="{Binding LoginStatusText}" IsVisible="{Binding !IsLoggingIn}" Foreground="Gray" TextWrapping="Wrap" Margin="0 3 0 0" />
+			</StackPanel>
+			<Grid ColumnDefinitions="1*,Auto" IsVisible="{Binding Config.IsTwitchLinked}">
+				<TextBlock Text="{Binding Config.TwitchDisplayName, StringFormat='Logged in as {0}'}" VerticalAlignment="Center" />
+				<Button Grid.Column="1" Content="Log out" Click="LogoutOfTwitch_OnClick" />
+			</Grid>
+
+			<TextBlock Text="Display" Foreground="Gray" Margin="0 12 0 3" />
+			<CheckBox IsChecked="{Binding Config.ShowAnnouncements}" Content="Show challenge announcements &amp; popups"
+			          ToolTip.Tip="Show news from saphros.de: upcoming challenges, events and teasers. Each announcement pops up once when Mesen starts, and the current one is also shown as a banner in 'Browse / Manage Challenges'.&#10;&#10;Off = no popups, no banner, and nothing is fetched from the server." />
+			<CheckBox IsChecked="{Binding Config.ShowTitleScreen}" Content="Show title screen when loading a challenge"
+			          ToolTip.Tip="Show the challenge's title screen - logo, name and the hack + author credits for every segment - when you load it, with a Start button to begin.&#10;&#10;Off = challenges start straight away. Either way it never appears on a reset or between segments, and challenges packed without credit data never show it." />
+			<CheckBox IsChecked="{Binding Config.ShowPersonalBests}" Content="Show Personal Bests" />
+			<CheckBox IsChecked="{Binding Config.ShowSegmentInfo}" Content="Show segment name / counter"
+			          ToolTip.Tip="Show the 'Segment X/Y' counter and the segment name on the live HUD." />
+			<CheckBox IsChecked="{Binding Config.ShowDelta}" Content="Show live delta (+/- vs PB)"
+			          ToolTip.Tip="Show the running +/- difference against your segment PB while playing (needs Personal Bests on)." />
+			<CheckBox IsChecked="{Binding Config.ShowGhost}" Content="Show Personal Best ghost"
+			          ToolTip.Tip="Show a semi-transparent replay of your own segment PB running alongside you." />
+			<StackPanel Orientation="Horizontal" Margin="18 2 0 0">
+				<dc:ColorPickerField Color="{Binding Config.GhostColor}" Text="Your PB ghost"
+				                     ToolTip.Tip="Tint color for your own personal-best ghost." />
+				<dc:ColorPickerField Color="{Binding Config.RaceGhostColor}" Text="Race opponent" Margin="12 0 0 0"
+				                     ToolTip.Tip="Tint color for a foreign ghost loaded via 'Race a Ghost from File...' so you can tell it apart from your own." />
+			</StackPanel>
+			<c:MesenSlider Minimum="0" Maximum="100" Value="{Binding Config.GhostOpacity}" Text="Ghost opacity" Margin="18 2 0 0"
+			               ToolTip.Tip="How opaque both ghosts are drawn (0 = invisible, 100 = near-solid). At 10 or below only the name is shown." />
+			<c:MesenSlider Minimum="0" Maximum="100" Value="{Binding Config.GhostNameOpacity}" Text="Ghost name opacity" Margin="18 2 0 0"
+			               ToolTip.Tip="How opaque the ghost's name label is drawn (0 = invisible, 100 = solid), independent of the ghost opacity above. Keep it high to still read who the ghost is when the ghost body is very faint." />
+			<CheckBox IsChecked="{Binding Config.GhostOutlineOnly}" Content="Ghost outline only (no fill)" Margin="18 2 0 0"
+			          ToolTip.Tip="Draw just the ghost's outline without the translucent fill - a more minimal marker." />
+			<Grid ColumnDefinitions="Auto,1*" RowDefinitions="Auto" Margin="0 6 0 0">
+				<TextBlock Text="HUD size" VerticalAlignment="Center" Margin="0 0 8 0" />
+				<c:EnumComboBox Grid.Column="1" SelectedItem="{Binding Config.HudSize}" />
+			</Grid>
+
+			<TextBlock Text="Gameplay" Foreground="Gray" Margin="0 12 0 3" />
+			<Grid ColumnDefinitions="Auto,1*" RowDefinitions="Auto">
+				<TextBlock Text="Preview frames" VerticalAlignment="Center" Margin="0 0 8 0"
+				           ToolTip.Tip="Frames the segment's starting screen is shown before play and the timer begin (0 = off)." />
+				<c:MesenNumericUpDown Grid.Column="1" HorizontalAlignment="Left" MinWidth="90"
+				                      Minimum="0" Maximum="600" Value="{Binding Config.PreviewFrames}" />
+			</Grid>
+			<CheckBox IsChecked="{Binding Config.PreviewOnDeath}" Content="Show 'Get Ready' after death (pause timer)" Margin="0 4 0 0"
+			          ToolTip.Tip="After a death mid-run, freeze the screen with the 'GET READY' countdown before play resumes. The segment timer is paused during the countdown and continues from where it was - the time you already spent still counts, you just get a moment to prepare (like at a segment start).&#10;&#10;Uses the same duration as 'Preview frames' (no effect if that is 0)." />
+			<CheckBox IsChecked="{Binding Config.MuteMusic}" Content="Mute music (keep sound effects)" Margin="0 4 0 0"
+			          ToolTip.Tip="Mutes the hack's music while a challenge or practice runs, but keeps sound effects audible. Works on all channels (the music engine's master volume is held at 0 in SPC RAM, which only affects music - sound effects bypass it). The ROM file is left untouched.&#10;&#10;Tuned for SMW / AddMusicK hacks." />
+			<CheckBox IsChecked="{Binding Config.AutoResetOnDeath}" Content="Auto-reset run on death (SMW only)" Margin="0 4 0 0"
+			          ToolTip.Tip="On death, restart the whole challenge from segment 1 (counts as a new attempt) instead of just reloading the current segment. Off = classic runs where deaths cost time but the run continues.&#10;&#10;Death is detected via SMW's player-animation state ($0071 = 9), so this only works for Super Mario World hacks. Leave it off for retro-game challenges." />
+
+			<TextBlock Text="Reset shortcut" Foreground="Gray" Margin="0 12 0 3" />
+			<TextBlock Text="Hold the button(s) ~0.5s to restart. Pick two for a safe combo, or set Button 2 to None for a single button. Leave both on None to use each challenge's own default."
+			           Foreground="Gray" TextWrapping="Wrap" FontSize="11" Margin="0 0 0 3" />
+			<Grid ColumnDefinitions="Auto,1*,Auto,1*" RowDefinitions="Auto">
+				<TextBlock Text="Button 1" VerticalAlignment="Center" Margin="0 0 8 0" />
+				<c:EnumComboBox Grid.Column="1" SelectedItem="{Binding Config.ResetButton1}" />
+				<TextBlock Grid.Column="2" Text="Button 2" VerticalAlignment="Center" Margin="12 0 8 0" />
+				<c:EnumComboBox Grid.Column="3" SelectedItem="{Binding Config.ResetButton2}" />
+			</Grid>
+			<CheckBox IsChecked="{Binding Config.ResetOnTap}" Content="Retry on tap (don't require holding)" Margin="0 4 0 0"
+			          ToolTip.Tip="On: a quick tap of the reset button(s) restarts immediately. Off: hold them ~0.5s (avoids accidental restarts during play)." />
+
+			<StackPanel IsVisible="{Binding IsWindows}">
+				<TextBlock Text="Replay files" Foreground="Gray" Margin="0 12 0 3" />
+				<CheckBox IsChecked="{Binding Config.AssociateReplayFiles}" Content="Open .creplay files with this emulator"
+				          ToolTip.Tip="Register this copy of Mesen as the handler for .creplay replay files, so double-clicking a replay someone shared with you opens it here and asks whether to watch it or race its ghost.&#10;&#10;Re-registered on every launch, so it keeps working after you move Mesen.exe. Off = the entries are removed again." />
+			</StackPanel>
+
+			<TextBlock Text="Stream overlay" Foreground="Gray" Margin="0 12 0 3" />
+			<CheckBox IsChecked="{Binding Config.StreamOverlay}" Content="Write stream stats (OBS overlay)"
+			          ToolTip.Tip="Write live run stats to a 'stream' folder next to Mesen.exe: overlay.html (add as an OBS Browser source), stats.json, and text/*.txt (for OBS Text sources). Updated after every death, segment, run and reset. Off = nothing is written.&#10;&#10;Stats include PBs, Sum of Best, session deaths/finishes/PBs, playtime, deaths per hour, finish rate, deathless streak, enemies killed and your 'nemesis' segment." />
+			<StackPanel Orientation="Horizontal" Margin="18 4 0 0">
+				<Button Content="Reset session stats" Click="ResetStreamStats_OnClick"
+				        ToolTip.Tip="Clear the session counters (deaths, attempts, finishes, streaks, nemesis, kills, playtime). Your PBs are kept. Takes effect on the next run event." />
+				<TextBlock Text="Overlay: &lt;Mesen folder&gt;\stream\overlay.html" VerticalAlignment="Center" Foreground="Gray" FontSize="11" Margin="8 0 0 0" />
+			</StackPanel>
+		</StackPanel>
+	</DockPanel>
+</Window>

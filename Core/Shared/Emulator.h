@@ -108,7 +108,18 @@ private:
 	atomic<int> _blockDebuggerRequestCount;
 
 	atomic<bool> _isRunAheadFrame;
+	//Run-ahead + challenge engine: with run-ahead active, RunFrameWithRunAhead
+	//emulates several frames but only COMMITS the first one (the rest are rolled back / used
+	//for display latency). A challenge script must therefore run its callbacks only on that
+	//committed frame, so counting + savestate ops act on the kept timeline. _isRunAheadActive
+	//is true for the whole look-ahead sequence; _isRunAheadCommitFrame only for the committed frame.
+	atomic<bool> _isRunAheadActive = false;
+	atomic<bool> _isRunAheadCommitFrame = false;
 	bool _frameRunning = false;
+
+	//When a challenge is active, the UI locks down the emulator (no savestates,
+	//rewind, speed changes, cheats, debugger windows, etc.) to prevent cheating.
+	atomic<bool> _challengeMode = false;
 
 	RomInfo _rom;
 	ConsoleType _consoleType = {};
@@ -130,6 +141,9 @@ private:
 	//This is needed until the debugger tools are able to handle debugging 2 identical
 	//consoles at the same time.
 	bool _isDebuggerDisabled = false;
+
+	string _pendingRomToLoad;
+	string _pendingPatchToLoad;
 
 	void WaitForLock();
 	void WaitForPauseEnd();
@@ -168,6 +182,11 @@ public:
 	void Reset();
 	void ReloadRom(bool forPowerCycle);
 	void PowerCycle();
+	void QueueRomLoad(string romPath, string patchPath = "")
+	{
+		_pendingRomToLoad = romPath;
+		_pendingPatchToLoad = patchPath;
+	}
 
 	void PauseOnNextFrame();
 
@@ -227,6 +246,9 @@ public:
 
 	ShortcutState IsShortcutAllowed(EmulatorShortcut shortcut, uint32_t shortcutParam);
 	bool IsKeyboardConnected();
+
+	void SetChallengeMode(bool enabled) { _challengeMode = enabled; }
+	bool IsChallengeMode() { return _challengeMode; }
 
 	void InitDebugger();
 	void StopDebugger();

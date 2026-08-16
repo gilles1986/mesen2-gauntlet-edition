@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -67,7 +67,7 @@ namespace Mesen.Config
 		[Reactive] public bool ShowDebugInfo { get; set; } = false;
 		[Reactive] public bool DisableOsd { get; set; } = false;
 		[Reactive] public HudDisplaySize HudSize { get; set; } = HudDisplaySize.Fixed;
-		[Reactive] public GameSelectionMode GameSelectionScreenMode { get; set; } = GameSelectionMode.ResumeState;
+		[Reactive] public GameSelectionMode GameSelectionScreenMode { get; set; } = GameSelectionMode.Disabled;
 
 		[Reactive] public FontAntialiasing FontAntialiasing { get; set; } = FontAntialiasing.SubPixelAntialias;
 		[Reactive] public FontConfig MesenFont { get; set; } = new FontConfig() { FontFamily = "Microsoft Sans Serif", FontSize = 11 };
