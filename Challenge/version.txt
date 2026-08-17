@@ -7,5 +7,5 @@
 #   - "version" must be plain numeric (major.minor, e.g. 1.6) so the updater can compare it.
 #   - Bump this for every release and keep it in sync with the version string you upload
 #     alongside the ZIP in the mod panel.
-version=3.2
-date=2026-08-15
+version=3.3
+date=2026-08-17

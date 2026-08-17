@@ -44,6 +44,7 @@ namespace Mesen.ViewModels
 			Config.LastDismissedAnnouncementId = live.LastDismissedAnnouncementId;
 
 			ConfigManager.Config.Challenge = Config.Clone();
+			ConfigManager.Config.Save();
 
 			//Unlike the display settings (which the engine picks up on its next load), the file
 			//association is system state - apply it now so turning it off actually releases the

@@ -16,8 +16,8 @@ namespace Mesen.Utilities
 	/// </summary>
 	public class ChallengeReplayInfo
 	{
-		//The SNES frame rate the challenge engine and the leaderboard both use (relay.lua fmt()
-		//and the backend agree on). Kept here so a replay's time reads exactly like the time
+		//The SNES frame rate the challenge engine and the leaderboard both use (relay.lua fmt(),
+		//LEADERBOARD_API.md section 4). Kept here so a replay's time reads exactly like the time
 		//submitted for the same run.
 		public const double Fps = 60.0988;
 

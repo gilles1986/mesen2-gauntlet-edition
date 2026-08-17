@@ -7,9 +7,6 @@ namespace Mesen.Utilities
 	/// shipped <c>.bps</c> patches into playable ROMs against the user's clean ROM.
 	/// Verifies the clean ROM against the patch's source CRC and auto-strips a 512-byte
 	/// copier header if present.
-	///
-	/// Based on the BPS patch format by byuu/Near and RomPatcher.js by Marc Robledo (MIT License):
-	/// https://github.com/marcrobledo/RomPatcher.js
 	/// </summary>
 	public static class BpsPatcher
 	{

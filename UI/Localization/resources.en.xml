@@ -1901,11 +1901,26 @@ E
 		<Message ID="AddressHasOtherLabel">Another label exists for this address: {0}</Message>
 	</Messages>
 	<Enums>
+		<Enum ID="ChallengeReplayOpen">
+			<Value ID="Ask">Ask every time</Value>
+			<Value ID="Watch">Watch the run</Value>
+			<Value ID="Race">Race its ghost</Value>
+		</Enum>
+		<Enum ID="ChallengeAutoReset">
+			<Value ID="Off">Off - a fail reloads the segment</Value>
+			<Value ID="FirstSegmentOnly">First segment only</Value>
+			<Value ID="EverySegment">Every segment</Value>
+		</Enum>
 		<Enum ID="ChallengeHudSize">
 			<Value ID="Big">Big</Value>
 			<Value ID="Normal">Normal</Value>
 			<Value ID="Small">Small</Value>
 			<Value ID="Smaller">Smaller</Value>
+		</Enum>
+		<Enum ID="ChallengeInputDisplayPosition">
+			<Value ID="BottomRight">Bottom Right</Value>
+			<Value ID="TopRight">Top Right</Value>
+			<Value ID="BottomLeft">Bottom Left</Value>
 		</Enum>
 		<Enum ID="ChallengeResetButton">
 			<Value ID="None">None</Value>

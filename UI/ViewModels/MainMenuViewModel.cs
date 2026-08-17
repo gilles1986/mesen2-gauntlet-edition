@@ -1,4 +1,4 @@
-using Avalonia.Controls;
+﻿using Avalonia.Controls;
 using Avalonia.Threading;
 using Mesen.Config;
 using Mesen.Config.Shortcuts;
@@ -16,6 +16,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
@@ -405,10 +406,10 @@ namespace Mesen.ViewModels
 				return null;
 			}
 
-			string tempDir = Path.Combine(ChallengeReplayLauncher.ReplaysRoot, tempDirName);
+			string tempDir = "";
 
 			try {
-				ChallengeReplayLauncher.ExtractPackage(file, tempDirName);
+				tempDir = ChallengeReplayLauncher.ExtractPackage(file, tempDirName);
 
 				ChallengeReplayInfo? info = ChallengeReplayInfo.FromFolder(tempDir);
 				if(info == null) {
@@ -428,7 +429,7 @@ namespace Mesen.ViewModels
 				return (info, tempDir);
 			} catch(Exception ex) {
 				await MessageBox.Show(wnd, "Failed to load file: " + ex.Message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
-				if(Directory.Exists(tempDir)) {
+				if(tempDir.Length > 0 && Directory.Exists(tempDir)) {
 					try { Directory.Delete(tempDir, true); } catch {}
 				}
 				return null;

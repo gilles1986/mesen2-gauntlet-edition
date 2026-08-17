@@ -26,6 +26,14 @@ namespace Mesen.Utilities
 			public string DownloadUrl = "";
 			public bool IsActive = true;
 			public bool RequiresTwitchLogin = false;
+
+			//Its submission deadline has passed. The server computes this against the same clock
+			//submit.php checks, so the emulator can't disagree with it - which matters, because
+			//submit.php rejects runs for an ended challenge exactly as it does for an inactive one.
+			//An expired challenge can still be played and practised, just not submitted.
+			public bool HasEnded = false;
+			//ISO8601 as the server sent it, for display only ("" when the challenge has no deadline).
+			public string EndsAt = "";
 		}
 
 		//Name of the local sidecar file (written at install time) that records whether
@@ -55,7 +63,10 @@ namespace Mesen.Utilities
 						DownloadUrl = GetStr(e, "download_url"),
 						//Absent or non-false is treated as active.
 						IsActive = !e.TryGetProperty("is_active", out JsonElement a) || a.ValueKind != JsonValueKind.False,
-						RequiresTwitchLogin = e.TryGetProperty("requires_twitch_login", out JsonElement rtl) && rtl.ValueKind == JsonValueKind.True
+						RequiresTwitchLogin = e.TryGetProperty("requires_twitch_login", out JsonElement rtl) && rtl.ValueKind == JsonValueKind.True,
+						//Absent (older server) means "no deadline known" - never guess it has ended.
+						HasEnded = e.TryGetProperty("has_ended", out JsonElement he) && he.ValueKind == JsonValueKind.True,
+						EndsAt = GetStr(e, "ends_at")
 					};
 					if(c.Id.Length > 0 && c.DownloadUrl.Length > 0) {
 						if(c.Name.Length == 0) {

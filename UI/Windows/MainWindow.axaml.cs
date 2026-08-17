@@ -272,14 +272,27 @@ namespace Mesen.Windows
 				Dispatcher.UIThread.Post(() => {
 					cmdLine.LoadFiles();
 					cmdLine.OnAfterInit(this);
+
+					//Asked before the call, which clears the request.
+					bool openingReplay = cmdLine.HasChallengeReplayToOpen;
 					cmdLine.OpenChallengeReplay(this);
-
-
 
 					if(ConfigManager.Config.Preferences.AutomaticallyCheckForUpdates) {
 						_model.MainMenu.CheckForUpdate(this, true);
 					}
-					CheckForChallengeStartupPrompts();
+
+					//Skipped when we were launched to open a replay: the replay prompt is modal and
+					//the main window can only own one modal dialog at a time, so the update and
+					//announcement popups would fight it for the slot. Someone who double-clicked a
+					//replay (or clicked play on saphros.de) wants the replay, not the news - and both
+					//popups come back on the next ordinary start.
+					if(!openingReplay) {
+						CheckForChallengeStartupPrompts();
+					}
+
+					//Easter egg - watches the idle screen for the Konami code. Attached here
+					//because it polls the core's key state, which needs InitializeEmu to be done.
+					ChallengeKonamiCode.Attach(this);
 				});
 			});
 		}

@@ -4,6 +4,7 @@ using ReactiveUI.Fody.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Threading.Tasks;
 
 namespace Mesen.ViewModels
@@ -95,6 +96,32 @@ namespace Mesen.ViewModels
 
 		public string Name => Data.Name;
 		public bool IsActive => Data.IsActive;
+
+		/// <summary>
+		/// Its deadline has passed, which means submit.php rejects runs for it just as it does for
+		/// a deactivated one - so it belongs next to "Inactive", not hidden. Shown separately
+		/// because the reason differs: the challenge is fine, its window is over, and it can still
+		/// be played and practised.
+		/// </summary>
+		public bool HasEnded => Data.HasEnded;
+
+		/// <summary>"Ended 2 Aug 2026" - or just "Ended" if the server sent no readable date.</summary>
+		public string EndedText
+		{
+			get
+			{
+				if(!Data.HasEnded) {
+					return "";
+				}
+				//The server sends UTC (ISO8601 with Z); show it in the player's own time, since
+				//that is the deadline they experienced.
+				if(DateTimeOffset.TryParse(Data.EndsAt, CultureInfo.InvariantCulture,
+					DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out DateTimeOffset ends)) {
+					return "Ended " + ends.ToLocalTime().ToString("d MMM yyyy", CultureInfo.CurrentCulture) + " (no submissions)";
+				}
+				return "Ended (no submissions)";
+			}
+		}
 
 		/// <summary>Folder under challenges/ this entry installs to / was found in.</summary>
 		public string Folder { get; }

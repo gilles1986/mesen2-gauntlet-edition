@@ -99,7 +99,7 @@
     font-size: 0.95rem;
     color: var(--primary);
   }
-  /* Goal badge for "kill X enemies" segments (only visible when the segment has a goal) */
+  /* Ziel-Badge fuer "toete X Gegner"-Segmente (nur sichtbar, wenn das Segment ein Ziel hat) */
   .now .kgoal {
     font-family: var(--font-mono);
     font-weight: 700;
@@ -273,8 +273,8 @@
     txt("rundeaths", live.run_deaths != null ? live.run_deaths : 0);
     card.classList.toggle("done", live.state === "done");
 
-    // Goal of the current segment ("Score 1200/5000", "Kills 3/10"): the badge only shows
-    // for goal segments — for every other one the engine reports goal = null.
+    // Ziel des aktuellen Segments ("Score 1200/5000", "Kills 3/10"): Badge nur bei
+    // Ziel-Segmenten — bei allen anderen liefert die Engine goal = null.
     var kgoal = document.getElementById("kgoal");
     var g = live.goal;
     if (g && g.target > 0) {

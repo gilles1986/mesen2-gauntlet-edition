@@ -76,7 +76,6 @@ namespace Mesen.Windows
 				new("ELFSharp", "", "MIT", "https://github.com/konrad-kruczynski/elfsharp"),
 				new("ymfm", "", "BSD 3-clause", "https://github.com/aaronsgiles/ymfm"),
 				new("GBA Multiply Algo (zaydlang)", "", "zlib", "https://github.com/zaydlang/multiplication-algorithm/"),
-				new("RomPatcher.js (BPS)", "Marc Robledo", "MIT", "https://github.com/marcrobledo/RomPatcher.js"),
 			};
 
 			LibraryList.Sort((a, b) => a.Name.CompareTo(b.Name));

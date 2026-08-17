@@ -65,6 +65,9 @@
 											<TextBlock Text="Not installed" Foreground="Gray" IsVisible="{Binding !Installed}" />
 											<TextBlock Text="Imported (not in catalog)" Foreground="Gray" IsVisible="{Binding IsLocalOnly}" />
 											<TextBlock Text="Inactive (no submissions)" Foreground="#FF8080" IsVisible="{Binding !IsActive}" />
+											<!-- A passed deadline rejects submissions just like a deactivated challenge,
+											     so it has to be visible here - see the mod panel's status badge too. -->
+											<TextBlock Text="{Binding EndedText}" Foreground="#FF8080" IsVisible="{Binding HasEnded}" />
 										</StackPanel>
 									</StackPanel>
 									<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">

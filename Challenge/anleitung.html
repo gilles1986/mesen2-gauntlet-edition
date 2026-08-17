@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mesen Challenge Edition – So funktioniert's</title>
+<style>
+  :root {
+    --bg: #14161f;
+    --panel: #1d2130;
+    --panel2: #252a3d;
+    --border: #363c55;
+    --text: #e8eaf2;
+    --muted: #9aa0b5;
+    --gold: #ffd700;
+    --green: #4ade80;
+    --blue: #66ccff;
+    --purple: #a970ff;
+    --orange: #ff9d4d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 24px 20px 80px; }
+
+  /* ---------- Hero ---------- */
+  header { text-align: center; padding: 40px 0 28px; }
+  header .badge {
+    display: inline-block; padding: 4px 14px; border: 1px solid var(--gold);
+    border-radius: 999px; color: var(--gold); font-size: 13px;
+    letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px;
+  }
+  header h1 { font-size: clamp(26px, 5vw, 40px); letter-spacing: 1px; }
+  header h1 .accent { color: var(--gold); }
+  header p.sub { color: var(--muted); max-width: 560px; margin: 14px auto 0; font-size: 17px; }
+
+  section { margin-top: 56px; }
+  h2 {
+    font-size: 22px; margin-bottom: 6px; letter-spacing: 0.5px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2::before { content: ""; width: 6px; height: 24px; background: var(--gold); border-radius: 3px; }
+  .lead { color: var(--muted); margin-bottom: 22px; }
+
+  /* ---------- Übersichts-Diagramm ---------- */
+  .flow {
+    display: flex; align-items: stretch; justify-content: center;
+    gap: 6px; flex-wrap: wrap; margin-bottom: 10px;
+  }
+  .flow-node {
+    flex: 1 1 140px; max-width: 190px; min-width: 130px;
+    background: var(--panel); border: 2px solid var(--border); border-radius: 12px;
+    padding: 16px 10px; text-align: center; cursor: pointer;
+    transition: transform .15s, border-color .15s, background .15s;
+    user-select: none;
+  }
+  .flow-node .icon { font-size: 30px; display: block; margin-bottom: 8px; }
+  .flow-node .name { font-weight: 600; font-size: 14px; }
+  .flow-node .hint { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+  .flow-node:hover { transform: translateY(-3px); border-color: var(--muted); }
+  .flow-node.active { border-color: var(--gold); background: var(--panel2); transform: translateY(-3px); }
+  .flow-arrow {
+    align-self: center; color: var(--muted); font-size: 22px; padding: 0 2px;
+    flex: 0 0 auto;
+  }
+  .flow-side {
+    display: flex; justify-content: center; margin-top: 4px; gap: 6px; align-items: center;
+  }
+  .flow-side .flow-arrow { transform: rotate(90deg); font-size: 18px; }
+  .flow-detail {
+    background: var(--panel2); border: 1px solid var(--border); border-left: 4px solid var(--gold);
+    border-radius: 10px; padding: 18px 20px; margin-top: 16px; min-height: 96px;
+  }
+  .flow-detail h3 { font-size: 16px; margin-bottom: 6px; }
+  .flow-detail p { color: var(--muted); font-size: 14.5px; }
+  .flow-detail p strong { color: var(--text); }
+  .tap-hint { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 10px; }
+
+  /* ---------- Schritte ---------- */
+  .steps { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .step-btn {
+    flex: 1 1 150px; min-width: 140px;
+    background: var(--panel); border: 2px solid var(--border); border-radius: 10px;
+    color: var(--text); padding: 12px 10px; cursor: pointer; text-align: left;
+    font-family: inherit; font-size: 13.5px; transition: border-color .15s, background .15s;
+  }
+  .step-btn .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--border); color: var(--text); font-weight: 700; font-size: 13px;
+    margin-bottom: 6px;
+  }
+  .step-btn.active { border-color: var(--green); background: var(--panel2); }
+  .step-btn.active .num { background: var(--green); color: #0c2616; }
+  .step-btn .t { display: block; font-weight: 600; }
+  .step-detail {
+    background: var(--panel2); border: 1px solid var(--border); border-left: 4px solid var(--green);
+    border-radius: 10px; padding: 20px 22px;
+  }
+  .step-detail h3 { font-size: 17px; margin-bottom: 10px; }
+  .step-detail p, .step-detail li { color: var(--muted); font-size: 14.5px; }
+  .step-detail p strong, .step-detail li strong { color: var(--text); }
+  .step-detail ul { padding-left: 20px; margin-top: 8px; }
+  .step-detail li { margin-bottom: 6px; }
+  .menu-path {
+    display: inline-block; background: #11131b; border: 1px solid var(--border);
+    border-radius: 6px; padding: 2px 8px; font-family: Consolas, monospace;
+    font-size: 13px; color: var(--blue); white-space: nowrap;
+  }
+  .note {
+    background: rgba(255, 215, 0, .07); border: 1px solid rgba(255, 215, 0, .3);
+    border-radius: 8px; padding: 10px 14px; margin-top: 12px; font-size: 13.5px; color: var(--muted);
+  }
+  .note strong { color: var(--gold); }
+
+  /* ---------- Twitch-Login ---------- */
+  .twitch-flow { display: flex; gap: 8px; flex-wrap: wrap; }
+  .twitch-step {
+    flex: 1 1 220px; background: var(--panel); border: 2px solid var(--border);
+    border-radius: 12px; padding: 18px;
+    border-top: 4px solid var(--purple);
+  }
+  .twitch-step .n { color: var(--purple); font-weight: 700; font-size: 13px; letter-spacing: 1px; }
+  .twitch-step h3 { font-size: 15px; margin: 6px 0; }
+  .twitch-step p { color: var(--muted); font-size: 13.5px; }
+
+  /* ---------- FAQ ---------- */
+  details {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    margin-bottom: 10px; overflow: hidden;
+  }
+  summary {
+    cursor: pointer; padding: 14px 18px; font-weight: 600; font-size: 15px;
+    list-style: none; display: flex; align-items: center; gap: 10px;
+    transition: background .15s;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "+"; color: var(--gold); font-weight: 700; width: 16px; }
+  details[open] summary::before { content: "–"; }
+  summary:hover { background: var(--panel2); }
+  details .body { padding: 0 18px 16px 44px; color: var(--muted); font-size: 14.5px; }
+  details .body strong { color: var(--text); }
+
+  footer { margin-top: 64px; text-align: center; color: var(--muted); font-size: 13px; }
+  footer a { color: var(--blue); }
+
+  @media (max-width: 640px) {
+    .flow { flex-direction: column; align-items: stretch; }
+    .flow-node { max-width: none; }
+    .flow-arrow { transform: rotate(90deg); text-align: center; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="badge">Challenge Edition</div>
+    <h1>Mesen <span class="accent">Kaizo Challenges</span><br>So funktioniert's</h1>
+    <p class="sub">Herausfordernde Super-Mario-World-Level spielen, deine Zeit einreichen
+    und dich auf der Online-Bestenliste mit anderen messen — alles direkt aus dem Emulator.</p>
+  </header>
+
+  <!-- ================= Übersicht ================= -->
+  <section id="overview">
+    <h2>Das große Ganze</h2>
+    <p class="lead">Vier Dinge spielen zusammen. Klick auf eine Station, um zu sehen, was sie macht.</p>
+
+    <div class="flow">
+      <div class="flow-node active" data-info="du">
+        <span class="icon">🎮</span>
+        <span class="name">Du</span>
+        <div class="hint">spielst &amp; entscheidest</div>
+      </div>
+      <div class="flow-arrow">➜</div>
+      <div class="flow-node" data-info="mesen">
+        <span class="icon">🖥️</span>
+        <span class="name">Mesen</span>
+        <div class="hint">Emulator &amp; Stoppuhr</div>
+      </div>
+      <div class="flow-arrow">➜</div>
+      <div class="flow-node" data-info="server">
+        <span class="icon">🌐</span>
+        <span class="name">saphros.de</span>
+        <div class="hint">prüft &amp; speichert</div>
+      </div>
+      <div class="flow-arrow">➜</div>
+      <div class="flow-node" data-info="web">
+        <span class="icon">🏆</span>
+        <span class="name">Bestenliste</span>
+        <div class="hint">im Browser</div>
+      </div>
+    </div>
+    <div class="flow-side">
+      <div class="flow-node" data-info="twitch" style="max-width:190px">
+        <span class="icon">💜</span>
+        <span class="name">Twitch</span>
+        <div class="hint">nur fürs Login</div>
+      </div>
+    </div>
+
+    <div class="flow-detail" id="flowDetail">
+      <h3>🎮 Du</h3>
+      <p>Du spielst die Challenge und <strong>du allein entscheidest</strong>, wann eine Zeit
+      eingereicht wird — nichts passiert automatisch. Erst wenn du am Ende auf dem
+      Ergebnis-Bildschirm <strong>START</strong> drückst, geht deine Zeit an die Bestenliste.</p>
+    </div>
+    <p class="tap-hint">👆 Stationen anklicken für Details</p>
+  </section>
+
+  <!-- ================= 5 Schritte ================= -->
+  <section id="steps">
+    <h2>In 5 Schritten auf die Bestenliste</h2>
+    <p class="lead">Von der Installation bis zum Eintrag auf der Rangliste.</p>
+
+    <div class="steps">
+      <button class="step-btn active" data-step="1"><span class="num">1</span><span class="t">ROM einrichten</span></button>
+      <button class="step-btn" data-step="2"><span class="num">2</span><span class="t">Challenge installieren</span></button>
+      <button class="step-btn" data-step="3"><span class="num">3</span><span class="t">Spielen</span></button>
+      <button class="step-btn" data-step="4"><span class="num">4</span><span class="t">Zeit einreichen</span></button>
+      <button class="step-btn" data-step="5"><span class="num">5</span><span class="t">Bestenliste ansehen</span></button>
+    </div>
+
+    <div class="step-detail" id="stepDetail"></div>
+  </section>
+
+  <!-- ================= Twitch ================= -->
+  <section id="twitch">
+    <h2>Mit Twitch anmelden</h2>
+    <p class="lead">Dein Twitch-Name erscheint auf der Bestenliste — samt Avatar und
+    Verifiziert-Häkchen. Der Login dauert eine Minute und funktioniert wie bei einer Smart-TV-App:</p>
+
+    <div class="twitch-flow">
+      <div class="twitch-step">
+        <div class="n">SCHRITT 1</div>
+        <h3>In Mesen starten</h3>
+        <p><span class="menu-path">Challenge ▸ Settings… ▸ Login with Twitch</span> —
+        Mesen öffnet automatisch deinen Browser.</p>
+      </div>
+      <div class="twitch-step">
+        <div class="n">SCHRITT 2</div>
+        <h3>Im Browser bestätigen</h3>
+        <p>Du meldest dich ganz normal bei Twitch an und bestätigst den angezeigten Code.
+        <strong>Dein Twitch-Passwort bekommt Mesen nie zu sehen</strong> — die Anmeldung
+        läuft komplett bei Twitch selbst.</p>
+      </div>
+      <div class="twitch-step">
+        <div class="n">SCHRITT 3</div>
+        <h3>Fertig — dauerhaft verbunden</h3>
+        <p>Mesen merkt sich die Verbindung, bis du dich abmeldest. Ab jetzt laufen alle
+        eingereichten Zeiten unter deinem Twitch-Namen.</p>
+      </div>
+    </div>
+
+    <div class="note"><strong>Hinweis:</strong> Spielen geht immer auch ohne Twitch.
+    Manche Challenges verlangen den Login aber, um Zeiten einzureichen — das sagt dir
+    Mesen dann beim Start der Challenge.</div>
+  </section>
+
+  <!-- ================= FAQ ================= -->
+  <section id="faq">
+    <h2>Häufige Fragen</h2>
+    <p class="lead">Alles, was beim Spielen sonst noch auftaucht.</p>
+
+    <details>
+      <summary>Warum brauche ich meine eigene Super-Mario-World-ROM?</summary>
+      <div class="body">Aus rechtlichen Gründen dürfen die Challenges das Original-Spiel nicht
+      enthalten. Sie werden stattdessen als <strong>Patches</strong> ausgeliefert, die Mesen
+      bei der Installation mit deiner sauberen <strong>SMW (US)</strong>-ROM kombiniert.
+      Das richtest du genau <strong>einmal</strong> ein — danach fragt Mesen nie wieder danach.
+      Falls deine ROM nicht passt (falsche Region, bereits verändert), erklärt dir der
+      Dialog genau, woran es liegt.</div>
+    </details>
+
+    <details>
+      <summary>Was ist die Reset-Combo?</summary>
+      <div class="body">Eine Tastenkombination am Controller (welche genau, legt die jeweilige
+      Challenge fest), die du kurz <strong>gedrückt hältst</strong>, um den kompletten Durchlauf
+      von vorn zu starten. Auf dem Bildschirm läuft dabei ein Countdown („RESET IN …s") —
+      loslassen bricht ab. Jeder solche Neustart zählt als <strong>Versuch (Try)</strong> und
+      wird mit auf der Bestenliste angezeigt.</div>
+    </details>
+
+    <details>
+      <summary>Was ist der Practice-Modus?</summary>
+      <div class="body">Über <span class="menu-path">Challenge ▸ Practice Segment</span> übst du
+      ein <strong>einzelnes Segment</strong> in Dauerschleife — ohne Wertung, ohne Einreichen,
+      ohne dass deine Bestzeiten angefasst werden. Nach jedem Abschluss siehst du deine
+      Practice-Zeit im Vergleich zu deiner Run-Bestzeit und den letzten Versuchen.
+      Beenden über <span class="menu-path">Challenge ▸ Stop Challenge</span>.</div>
+    </details>
+
+    <details>
+      <summary>Zählt nur meine Bestzeit?</summary>
+      <div class="body">Für die <strong>Rangliste</strong> zählt deine beste Zeit. Einreichen
+      kannst (und solltest) du aber <strong>jeden abgeschlossenen Lauf</strong> — daraus
+      entsteht deine Try-Historie, und deine <strong>Segment-Bestzeiten</strong> („Gold-Splits")
+      werden automatisch mitgeführt: Auch wenn ein Lauf insgesamt langsamer war, kann ein
+      einzelnes Segment darin dein schnellstes gewesen sein. Daraus errechnet sich auch
+      deine „Sum of Best".</div>
+    </details>
+
+    <details>
+      <summary>Was sind Achievements?</summary>
+      <div class="body">Für besondere Meilensteine (z. B. den ersten eingereichten Lauf)
+      schaltet der Server <strong>Achievements</strong> frei. Direkt nach dem Einreichen
+      erscheint dann ein goldenes <strong>„ACHIEVEMENT UNLOCKED!"</strong>-Popup auf dem
+      Ergebnis-Bildschirm, begleitet von einem Jingle.</div>
+    </details>
+
+    <details>
+      <summary>Wie wird Schummeln verhindert?</summary>
+      <div class="body">Während einer Challenge schaltet Mesen in einen
+      <strong>Lockdown-Modus</strong>: Savestates, Zurückspulen, Zeitlupe/Turbo, Cheats und
+      Debug-Werkzeuge sind gesperrt, die Geschwindigkeit ist fest auf 100 %. Außerdem prüft
+      Mesen bei jedem Level, dass die Challenge-Dateien <strong>unverändert</strong> sind, und
+      jede eingereichte Zeit trägt eine <strong>Prüfsignatur</strong>, die der Server
+      kontrolliert. Manipulierte Einsendungen werden abgelehnt oder als „unranked" markiert.</div>
+    </details>
+
+    <details>
+      <summary>Wie bekomme ich Updates?</summary>
+      <div class="body">Automatisch: Mesen prüft <strong>bei jedem Start</strong>, ob es eine
+      neuere Challenge-Edition gibt, und bietet sie dir per Dialog an. Ein Klick — Mesen lädt
+      das Update, tauscht sich selbst aus und startet neu. Falls eine Challenge eine neuere
+      Version braucht als deine, sagt sie dir das beim Start ebenfalls klar.</div>
+    </details>
+
+    <details>
+      <summary>Was ist das Fenster mit den Neuigkeiten beim Start?</summary>
+      <div class="body">Ankündigungen von <strong>saphros.de</strong>: kommende Challenges,
+      Events und Teaser. Jede Ankündigung erscheint <strong>genau einmal</strong> — schließt du
+      sie, kommt sie nicht wieder. Die aktuelle steht außerdem immer oben in
+      <span class="menu-path">Challenge ▸ Browse Challenges…</span>, dort kannst du sie über
+      <strong>Details</strong> jederzeit nochmal öffnen. Ist die Challenge schon
+      veröffentlicht, installierst oder startest du sie direkt aus dem Fenster heraus.
+      Wenn du das nicht möchtest: <span class="menu-path">Challenge ▸ Settings…</span> →
+      <strong>Show challenge announcements &amp; popups</strong> ausschalten, dann fragt Mesen
+      den Server gar nicht erst.</div>
+    </details>
+
+    <details>
+      <summary>Was ist eine .cha-Datei?</summary>
+      <div class="body">Das Paketformat für Challenges. Normalerweise brauchst du dich darum
+      nicht zu kümmern — <span class="menu-path">Challenge ▸ Browse Challenges…</span> lädt und
+      installiert alles automatisch. Hast du eine <strong>.cha</strong>-Datei manuell bekommen
+      (z. B. eine Challenge im Test, die noch nicht im Katalog ist), installierst du sie über
+      <span class="menu-path">Challenge ▸ Import Challenge…</span>. Wichtig: die Datei
+      <strong>nicht entpacken</strong>, sondern direkt importieren.</div>
+    </details>
+  </section>
+
+  <footer>
+    Mesen Challenge Edition · Bestenlisten unter
+    <a href="https://www.saphros.de/challenges" target="_blank" rel="noopener">saphros.de/challenges</a>
+  </footer>
+</div>
+
+<script>
+  // ---------- Übersichts-Diagramm ----------
+  const flowInfos = {
+    du: {
+      title: "🎮 Du",
+      html: "Du spielst die Challenge und <strong>du allein entscheidest</strong>, wann eine Zeit " +
+            "eingereicht wird — nichts passiert automatisch. Erst wenn du am Ende auf dem " +
+            "Ergebnis-Bildschirm <strong>START</strong> drückst, geht deine Zeit an die Bestenliste."
+    },
+    mesen: {
+      title: "🖥️ Mesen Challenge Edition",
+      html: "Ein Super-Nintendo-Emulator mit eingebautem Challenge-Modus: Er installiert " +
+            "Challenges per Klick, misst deine Zeit <strong>bildgenau</strong>, zeigt Splits und " +
+            "Bestzeiten direkt im Spiel an und sorgt dafür, dass niemand schummeln kann " +
+            "(keine Savestates, kein Zurückspulen, keine Zeitlupe). Updates holt er sich selbst."
+    },
+    server: {
+      title: "🌐 saphros.de",
+      html: "Die Zentrale: Sie stellt den <strong>Challenge-Katalog</strong> bereit, nimmt " +
+            "eingereichte Zeiten entgegen, prüft sie auf Echtheit und speichert sie in einer " +
+            "<strong>Datenbank</strong>. Daraus berechnet sie Ränge, Versuchs-Zähler, " +
+            "Gold-Splits und schaltet Achievements frei."
+    },
+    web: {
+      title: "🏆 Bestenliste im Browser",
+      html: "Die öffentliche Rangliste auf <strong>saphros.de/challenges</strong>: beste Zeit " +
+            "pro Spieler, Splits, Anzahl der Versuche — und bei verknüpften Konten Twitch-Name " +
+            "samt Avatar. Direkt aus Mesen erreichbar über " +
+            "<span class='menu-path'>Challenge ▸ View Leaderboards (Web)</span>."
+    },
+    twitch: {
+      title: "💜 Twitch",
+      html: "Dient <strong>nur zur Anmeldung</strong>: Damit auf der Bestenliste dein echter, " +
+            "verifizierter Name steht, verknüpfst du einmalig dein Twitch-Konto. Die Anmeldung " +
+            "passiert komplett in deinem Browser bei Twitch — Mesen sieht dein Passwort nie."
+    }
+  };
+
+  const flowDetail = document.getElementById("flowDetail");
+  document.querySelectorAll(".flow-node").forEach(node => {
+    node.addEventListener("click", () => {
+      document.querySelectorAll(".flow-node").forEach(n => n.classList.remove("active"));
+      node.classList.add("active");
+      const info = flowInfos[node.dataset.info];
+      flowDetail.innerHTML = "<h3>" + info.title + "</h3><p>" + info.html + "</p>";
+    });
+  });
+
+  // ---------- Schritte ----------
+  const stepInfos = {
+    1: {
+      title: "Schritt 1 · Deine SMW-ROM einrichten (einmalig)",
+      html: "<p>Challenges basieren auf <strong>Super Mario World (US)</strong>. Beim ersten " +
+            "Installieren fragt Mesen einmalig nach deiner eigenen, unveränderten SMW-ROM:</p>" +
+            "<ul><li>Dialog erscheint automatisch → ROM-Datei auswählen → fertig.</li>" +
+            "<li>Mesen prüft, ob es wirklich eine saubere US-Version ist, und merkt sie sich dauerhaft.</li>" +
+            "<li>Passt etwas nicht (falsche Region, veränderte ROM), erklärt der Dialog genau, was.</li></ul>" +
+            "<div class='note'><strong>Einmal und nie wieder:</strong> Danach taucht dieser Schritt nicht mehr auf.</div>"
+    },
+    2: {
+      title: "Schritt 2 · Challenge installieren",
+      html: "<p>Öffne <span class='menu-path'>Challenge ▸ Browse Challenges…</span> — Mesen lädt " +
+            "die aktuelle Liste aller verfügbaren Challenges von saphros.de:</p>" +
+            "<ul><li>Du siehst sofort, was schon installiert ist.</li>" +
+            "<li><strong>Install</strong> lädt und installiert die Challenge vollautomatisch — " +
+            "Reinstall und Delete gehen genauso per Klick.</li>" +
+            "<li>Kein Entpacken, kein Dateien-Verschieben nötig.</li></ul>" +
+            "<div class='note'><strong>Offline oder Challenge im Test?</strong> Eine .cha-Datei lässt sich " +
+            "auch manuell über <span class='menu-path'>Challenge ▸ Import Challenge…</span> installieren.</div>"
+    },
+    3: {
+      title: "Schritt 3 · Spielen",
+      html: "<p>Starte über <span class='menu-path'>Challenge ▸ Start Challenge</span> und wähle " +
+            "deine Challenge. Ab jetzt läuft die Uhr:</p>" +
+            "<ul><li>Das <strong>HUD</strong> zeigt Zeit, aktuelles Segment und (optional) deine Bestzeiten.</li>" +
+            "<li>Die Level laufen als <strong>Kette von Segmenten</strong> — nach jedem geschafften " +
+            "Segment geht es nahtlos ins nächste, deine Split-Zeiten werden festgehalten.</li>" +
+            "<li>Nicht jedes Segment endet am Zielband: manche verlangen z. B. <strong>„töte 10 Gegner"</strong> " +
+            "oder <strong>„hol 5000 Punkte"</strong>. Der Stand steht dann im HUD (<strong>„Kills 3/10"</strong>, " +
+            "<strong>„Score 1200/5000"</strong>) und wird grün, sobald du es hast.</li>" +
+            "<li>Kompletter Neustart jederzeit per <strong>Reset-Combo</strong> (Tasten gedrückt halten).</li>" +
+            "<li>Einzelne Segmente gezielt üben: <span class='menu-path'>Challenge ▸ Practice Segment</span> " +
+            "— ohne Wertung.</li></ul>" +
+            "<div class='note'><strong>Fair für alle:</strong> Während einer Challenge sind Savestates, " +
+            "Zurückspulen, Zeitlupe &amp; Co. gesperrt.</div>"
+    },
+    4: {
+      title: "Schritt 4 · Zeit einreichen",
+      html: "<p>Nach dem letzten Segment erscheint der <strong>Ergebnis-Bildschirm</strong> mit " +
+            "deiner Gesamtzeit und allen Splits:</p>" +
+            "<ul><li>Drücke <strong>START</strong>, um die Zeit an die Bestenliste zu schicken.</li>" +
+            "<li>Kurz darauf siehst du direkt im Spiel: <strong>„Submitted! Rank #3"</strong>.</li>" +
+            "<li>Hast du etwas freigeschaltet, gibt's das goldene " +
+            "<strong>ACHIEVEMENT-UNLOCKED!</strong>-Popup samt Jingle.</li>" +
+            "<li>Jeder abgeschlossene Lauf darf eingereicht werden — nicht nur Bestzeiten. " +
+            "Deine Segment-Rekorde und der Versuchs-Zähler laufen automatisch mit.</li></ul>"
+    },
+    5: {
+      title: "Schritt 5 · Bestenliste ansehen",
+      html: "<p>Die Ranglisten sind öffentlich im Web:</p>" +
+            "<ul><li>Direkt aus Mesen: <span class='menu-path'>Challenge ▸ View Leaderboards (Web)</span>.</li>" +
+            "<li>Oder im Browser: <strong>saphros.de/challenges</strong>.</li>" +
+            "<li>Dort siehst du pro Challenge die beste Zeit jedes Spielers, Splits, " +
+            "Versuchs-Zahlen, Gold-Splits/Sum-of-Best — und bei Twitch-Nutzern Name und Avatar.</li></ul>"
+    }
+  };
+
+  const stepDetail = document.getElementById("stepDetail");
+  function showStep(n) {
+    document.querySelectorAll(".step-btn").forEach(b =>
+      b.classList.toggle("active", b.dataset.step === String(n)));
+    const s = stepInfos[n];
+    stepDetail.innerHTML = "<h3>" + s.title + "</h3>" + s.html;
+  }
+  document.querySelectorAll(".step-btn").forEach(btn =>
+    btn.addEventListener("click", () => showStep(btn.dataset.step)));
+  showStep(1);
+</script>
+</body>
+</html>

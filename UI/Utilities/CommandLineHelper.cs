@@ -36,6 +36,10 @@ public class CommandLineHelper
 	/// instance). Opens the replay prompt instead of loading a ROM - see OpenChallengeReplay.</summary>
 	public string? ChallengeReplayToOpen { get; private set; } = null;
 
+	/// <summary>The run id from a mesen-challenge://replay/&lt;id&gt; link clicked on saphros.de.
+	/// 0 when there was none. Its replay is downloaded and opened by OpenChallengeReplay.</summary>
+	public int ChallengeReplayRunToOpen { get; private set; } = 0;
+
 	private List<string> _errorMessages = new();
 
 	public CommandLineHelper(string[] args, bool forStartup)
@@ -46,6 +50,19 @@ public class CommandLineHelper
 	private void ProcessCommandLineArgs(string[] args, bool forStartup)
 	{
 		foreach(string arg in args) {
+			//Handled before anything treats the argument as a path: a URL is not a file name, and
+			//feeding one to Path.GetFullPath would at best produce nonsense. A link addressed to us
+			//but malformed is rejected here and reported as a bad link - never passed on, and never
+			//acted upon in any other way.
+			if(ChallengeReplayLink.HasScheme(arg)) {
+				if(ChallengeReplayLink.TryParseRunId(arg, out int replayRunId)) {
+					ChallengeReplayRunToOpen = replayRunId;
+				} else {
+					_errorMessages.Add("Not a valid replay link: " + arg);
+				}
+				continue;
+			}
+
 			string absPath;
 			if(Path.IsPathRooted(arg)) {
 				absPath = arg;
@@ -185,15 +202,28 @@ public class CommandLineHelper
 	/// </summary>
 	public void OpenChallengeReplay(MainWindow wnd)
 	{
-		if(ChallengeReplayToOpen == null) {
-			return;
-		}
+		//One shot - a re-entrant call must not open the same replay twice. Both are cleared even
+		//though only one can be acted on: the prompt is modal, so a second replay would have
+		//nowhere to go, and leaving one pending would make it pop up at some later moment.
+		int runId = ChallengeReplayRunToOpen;
+		string? path = ChallengeReplayToOpen;
+		ChallengeReplayRunToOpen = 0;
+		ChallengeReplayToOpen = null;
 
-		string path = ChallengeReplayToOpen;
-		ChallengeReplayToOpen = null;   //one shot - a re-entrant call must not open it twice
-		wnd.BringToFront();
-		_ = ChallengeReplayLauncher.OpenAsync(wnd, path);
+		if(runId > 0) {
+			//A link wins over a file path: it is the more specific request of the two.
+			wnd.BringToFront();
+			_ = ChallengeReplayLauncher.OpenRunAsync(wnd, runId);
+		} else if(path != null) {
+			wnd.BringToFront();
+			_ = ChallengeReplayLauncher.OpenFileAsync(wnd, path);
+		}
 	}
+
+	/// <summary>True when this invocation was asked to open a replay - a link or a .creplay. The
+	/// startup path uses it to hold back its own popups, since the replay prompt is modal and the
+	/// main window can only own one modal dialog at a time.</summary>
+	public bool HasChallengeReplayToOpen => ChallengeReplayRunToOpen > 0 || ChallengeReplayToOpen != null;
 
 	public void LoadFiles()
 	{

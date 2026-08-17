@@ -1,4 +1,4 @@
-using Avalonia.Controls;
+﻿using Avalonia.Controls;
 using Mesen.ViewModels;
 using Mesen.Windows;
 using System;
@@ -9,27 +9,48 @@ using System.Threading.Tasks;
 namespace Mesen.Utilities
 {
 	/// <summary>
-	/// Opens a replay package (.creplay) without going through a file dialog: unpack it, work out
-	/// which Lauf it holds, ask what to do with it, start it.
+	/// Opens a replay without going through a file dialog: get hold of the package, work out which
+	/// Lauf it holds, ask what to do with it, start it.
 	///
-	/// This is the shared path behind every way a replay can arrive - double-clicking a shared
-	/// file today, a Play button on saphros.de next - so all of them behave identically. The
-	/// menu entries that pick a file themselves reuse the unpacking half of it.
+	/// Both ways in share this one path - double-clicking a shared .creplay and a Play button on
+	/// saphros.de - so they behave identically. The only difference is how the package is obtained,
+	/// which is why that step is a delegate: a local file is already there, a link means a
+	/// download. The menu entries that pick a file themselves reuse the unpacking half.
 	/// </summary>
 	public static class ChallengeReplayLauncher
 	{
+		/// <summary>A replay that has been unpacked, read and confirmed to belong to an installed
+		/// challenge - everything needed to show the prompt and start it.</summary>
+		public class PreparedReplay
+		{
+			public ChallengeReplayInfo Info { get; }
+			public string ExtractedDir { get; }
+			public string ChallengeName { get; }
+
+			/// <summary>False when the challenge this replay belongs to isn't installed yet. Not a
+			/// failure: the prompt offers to install it, so this is the normal case for someone
+			/// clicking play on a challenge they haven't played.</summary>
+			public bool ChallengeInstalled { get; }
+
+			public PreparedReplay(ChallengeReplayInfo info, string extractedDir, string challengeName, bool challengeInstalled)
+			{
+				Info = info;
+				ExtractedDir = extractedDir;
+				ChallengeName = challengeName;
+				ChallengeInstalled = challengeInstalled;
+			}
+		}
+
 		//The two menu flows each keep their own fixed folder (picking a file replaces what you
 		//last picked, which is what you'd expect there).
 		public const string WatchTempDir = "temp_replay";
 		public const string RaceTempDir = "temp_ghost";
 
-		//Opening replays by double-click can't share a fixed folder: opening a second replay
-		//while the first is still playing would delete the very files the engine is reading
-		//between segments. So every open gets a folder of its own, and stale ones are cleared
-		//out only while nothing is running - at which point nothing can be reading any of them.
+		//Opening replays by double-click or link can't share a fixed folder: opening a second
+		//replay while the first is still playing would delete the very files the engine is reading
+		//between segments. So every open gets a folder of its own, and stale ones are cleared out
+		//only while nothing is running - at which point nothing can be reading any of them.
 		private const string OpenTempDirPrefix = "open_";
-
-		public static string ReplaysRoot => Path.Combine(ChallengeManager.ChallengesRoot, "replays");
 
 		/// <summary>The message shown when a replay names a challenge that isn't installed. Shared
 		/// so the menu flows and the double-click flow can't drift apart.</summary>
@@ -45,7 +66,7 @@ namespace Mesen.Utilities
 		/// </summary>
 		public static string ExtractPackage(string packagePath, string tempDirName)
 		{
-			string tempDir = Path.Combine(ReplaysRoot, tempDirName);
+			string tempDir = Path.Combine(ChallengeManager.ReplaysRoot, tempDirName);
 			if(Directory.Exists(tempDir)) {
 				Directory.Delete(tempDir, true);
 			}
@@ -72,11 +93,29 @@ namespace Mesen.Utilities
 			return "";
 		}
 
+		/// <summary>Opens a replay package that is already on disk (double-click, or a .creplay
+		/// passed on the command line).</summary>
+		public static Task OpenFileAsync(Window? parent, string packagePath)
+		{
+			//No run id: nothing was downloaded, so there is nothing to re-fetch or rename - and a
+			//local file that isn't a valid replay will fail the same way every time.
+			return OpenAsync(parent, () => Task.FromResult(packagePath), null);
+		}
+
+		/// <summary>Opens the replay of a Lauf on saphros.de, downloading it if it isn't cached.
+		/// This is what a Play button on the website ends up calling.</summary>
+		public static Task OpenRunAsync(Window? parent, int runId)
+		{
+			return OpenAsync(parent, () => ChallengeReplayDownload.EnsureAsync(runId), runId);
+		}
+
 		/// <summary>
-		/// The full open-a-replay flow. Reports every failure itself and never throws, so callers
-		/// (startup arguments, the single-instance pipe) can fire it and forget.
+		/// The shared flow. Shows the prompt immediately - so a slow download or a cold start isn't
+		/// a few seconds of nothing happening - then fetches, then asks. Reports every failure
+		/// inside that window and never throws, so callers (startup arguments, the single-instance
+		/// pipe) can fire it and forget.
 		/// </summary>
-		public static async Task OpenAsync(Window? parent, string packagePath)
+		private static async Task OpenAsync(Window? parent, Func<Task<string>> acquirePackage, int? runId)
 		{
 			Window? owner = parent ?? ApplicationHelper.GetActiveOrMainWindow();
 			if(owner == null) {
@@ -84,57 +123,97 @@ namespace Mesen.Utilities
 				//reachable before the main window exists, which the callers already avoid.
 				return;
 			}
-			const string title = "Replay";
 
-			string tempDir;
-			try {
-				if(!File.Exists(packagePath)) {
-					await MessageBox.Show(owner, "That replay file no longer exists.", title, MessageBoxButtons.OK, MessageBoxIcon.Error);
-					return;
-				}
-				PruneOpenedReplays();
-				tempDir = ExtractPackage(packagePath, OpenTempDirPrefix + Guid.NewGuid().ToString("N"));
-			} catch(Exception ex) {
-				await MessageBox.Show(owner, "Failed to open the replay: " + ex.Message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
-				return;
-			}
-
-			ChallengeReplayInfo? info = ChallengeReplayInfo.FromFolder(tempDir);
-			if(info == null) {
-				DiscardFolder(tempDir);
-				await MessageBox.Show(owner,
-					"This file doesn't look like a valid replay (no challenge information found inside).",
-					title, MessageBoxButtons.OK, MessageBoxIcon.Error);
-				return;
-			}
-
-			if(!IsChallengeInstalled(info.ChallengeId)) {
-				//The common case for a shared run. Installing it from here is a separate step -
-				//until then, say plainly what's missing and how to get it.
-				DiscardFolder(tempDir);
-				await MessageBox.Show(owner, NotInstalledMessage(info.ChallengeId),
-					"Challenge not installed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-				return;
-			}
-
-			ChallengeReplayPromptViewModel model = new(info, GetChallengeDisplayName(info.ChallengeId), ChallengeManager.IsActive);
+			//Retry only makes sense for a download - fetching the same broken local file again
+			//would fail identically.
+			ChallengeReplayPromptViewModel model = new(() => PrepareAsync(acquirePackage, runId), retryable: runId.HasValue);
 			ChallengeReplayAction action = await ChallengeReplayPromptWindow.AskAsync(owner, model);
+
+			//The window can be closed while the fetch is still running. Wait for it, or its
+			//extracted folder would be left behind with nobody left to clean it up.
+			await model.Completion;
+
+			PreparedReplay? prepared = model.Prepared;
+			if(prepared == null) {
+				return;   //never got as far as a replay (failed, or cancelled before it finished)
+			}
 
 			//Only now is a running challenge allowed to end - both start paths stop it themselves.
 			switch(action) {
 				case ChallengeReplayAction.Watch:
-					ChallengeManager.StartReplay(info.ChallengeId, tempDir, info.Player);
+					ChallengeManager.StartReplay(prepared.Info.ChallengeId, prepared.ExtractedDir, prepared.Info.Player);
 					break;
 
 				case ChallengeReplayAction.Race:
 					//A normal, scored run of the challenge with the shared Lauf's ghost overlaid.
-					ChallengeManager.StartChallenge(info.ChallengeId, tempDir);
+					ChallengeManager.StartChallenge(prepared.Info.ChallengeId, prepared.ExtractedDir);
 					break;
 
 				default:
 					//Cancelled: nothing was started, so leave nothing behind either.
-					DiscardFolder(tempDir);
+					DiscardFolder(prepared.ExtractedDir);
 					break;
+			}
+		}
+
+		/// <summary>
+		/// Gets the package, unpacks it and reads it. Throws <see cref="ChallengeReplayException"/>
+		/// with a message fit to show whenever that can't be completed.
+		/// </summary>
+		private static async Task<PreparedReplay> PrepareAsync(Func<Task<string>> acquirePackage, int? runId)
+		{
+			string packagePath = await acquirePackage();
+			if(!File.Exists(packagePath)) {
+				throw new ChallengeReplayException("That replay file no longer exists.");
+			}
+
+			//Unpacking and reading are plain file work: off the UI thread, so the window paints its
+			//loading state even for an already-cached package where nothing else awaits.
+			return await Task.Run(() => {
+				//Deliberately outside the try below: a failure to tidy up old folders says nothing
+				//about this package, and must not be reported as "damaged" - let alone discard a
+				//perfectly good download.
+				PruneOpenedReplays();
+
+				string tempDir;
+				try {
+					tempDir = ExtractPackage(packagePath, OpenTempDirPrefix + Guid.NewGuid().ToString("N"));
+				} catch(Exception ex) {
+					//A truncated or corrupted package lands here. Drop a broken download so a retry
+					//fetches it again instead of failing on the same bytes forever.
+					DiscardDownload(packagePath, runId);
+					throw new ChallengeReplayException("The replay file is damaged and couldn't be opened (" + ex.Message + ").");
+				}
+
+				ChallengeReplayInfo? info = ChallengeReplayInfo.FromFolder(tempDir);
+				if(info == null) {
+					DiscardFolder(tempDir);
+					DiscardDownload(packagePath, runId);
+					throw new ChallengeReplayException("This file doesn't look like a valid replay (no challenge information found inside).");
+				}
+
+				//A missing challenge is NOT an error here - it is the normal case for a run someone
+				//clicked on the website. The prompt says so and offers to install it on confirm,
+				//which is the whole point of a one-click path.
+				bool installed = IsChallengeInstalled(info.ChallengeId);
+
+				//Now that the challenge is known, give a fresh download its readable name.
+				if(runId.HasValue) {
+					ChallengeReplayDownload.Adopt(packagePath, runId.Value, info.ChallengeId);
+				}
+
+				//An uninstalled challenge has no local name yet, so the slug stands in until the
+				//install replaces it.
+				return new PreparedReplay(info, tempDir, GetChallengeDisplayName(info.ChallengeId), installed);
+			});
+		}
+
+		/// <summary>Throws away an unusable download so a retry re-fetches it. Does nothing for a
+		/// local file the player picked themselves - that is not ours to delete.</summary>
+		private static void DiscardDownload(string packagePath, int? runId)
+		{
+			if(runId.HasValue) {
+				ChallengeReplayDownload.Discard(packagePath);
 			}
 		}
 
@@ -144,10 +223,10 @@ namespace Mesen.Utilities
 		/// </summary>
 		private static void PruneOpenedReplays()
 		{
-			if(!ChallengeManager.IsInactive || !Directory.Exists(ReplaysRoot)) {
+			if(!ChallengeManager.IsInactive || !Directory.Exists(ChallengeManager.ReplaysRoot)) {
 				return;
 			}
-			foreach(string dir in Directory.GetDirectories(ReplaysRoot, OpenTempDirPrefix + "*")) {
+			foreach(string dir in Directory.GetDirectories(ChallengeManager.ReplaysRoot, OpenTempDirPrefix + "*")) {
 				DiscardFolder(dir);
 			}
 		}

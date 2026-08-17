@@ -393,6 +393,8 @@ namespace Mesen.Utilities
 			header += "__HUD_SEGMENT = " + (ConfigManager.Config.Challenge.ShowSegmentInfo ? "true" : "false") + "\n";
 			header += "__HUD_DELTA = " + (ConfigManager.Config.Challenge.ShowDelta ? "true" : "false") + "\n";
 			header += "__HUD_SS = " + (int)ConfigManager.Config.Challenge.HudSize + "\n";
+			header += "__INPUT_DISPLAY = " + (ConfigManager.Config.Challenge.ShowInputDisplay ? "true" : "false") + "\n";
+			header += "__INPUT_DISPLAY_POS = [==[" + ConfigManager.Config.Challenge.InputDisplayPosition.ToString().ToLowerInvariant() + "]==]\n";
 			//When racing a foreign ghost the ghost is always shown (that's the whole point),
 			//regardless of the ShowGhost display toggle; otherwise it follows the setting.
 			bool ghostOn = ConfigManager.Config.Challenge.ShowGhost || !string.IsNullOrEmpty(_ghostDir);
@@ -415,7 +417,16 @@ namespace Mesen.Utilities
 				//The ghost's player name is read from the file header, so no separate name is needed.
 				header += "__GHOST_DIR = [==[" + gd + "]==]\n";
 			}
-			header += "__AUTO_RESET_ON_DEATH = " + (ConfigManager.Config.Challenge.AutoResetOnDeath ? "true" : "false") + "\n";
+			//Auto-reset on fail: "off" keeps the classic behaviour (a fail reloads the segment and
+			//the run carries on), "first" only resets in segment 1 - where a fail puts the player
+			//back at the start of the run anyway, so otherwise just the clock keeps running on a
+			//spoiled run - and "always" ends the attempt on any fail.
+			string autoResetMode = ConfigManager.Config.Challenge.AutoReset switch {
+				ChallengeAutoReset.FirstSegmentOnly => "first",
+				ChallengeAutoReset.EverySegment => "always",
+				_ => "off"
+			};
+			header += "__AUTO_RESET = [==[" + autoResetMode + "]==]\n";
 			//"Mute music (keep sound effects)": the engine holds the N-SPC/AddMusicK master music
 			//volume in SPC RAM at 0 every frame (mutes music on all 8 channels; SFX write their DSP
 			//voice volumes directly and stay audible). Replaces the old mixer-channel muting, which
@@ -510,6 +521,11 @@ namespace Mesen.Utilities
 				return Path.Combine(exeDir ?? Program.OriginalFolder, "challenges");
 			}
 		}
+
+		/// <summary>Where archived, shared and downloaded replays live, plus the folders they are
+		/// unpacked into. Owned here rather than by one of the replay classes, so those don't have
+		/// to reach into each other for it.</summary>
+		public static string ReplaysRoot => Path.Combine(ChallengesRoot, "replays");
 
 		/// <summary>Folder (next to Mesen.exe) the stream overlay writes into: overlay.html +
 		/// stats.json + text/*.txt. A stable path so an OBS browser/text source keeps working

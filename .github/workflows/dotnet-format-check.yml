@@ -1,12 +1,7 @@
 name: dotnet format check
 
-on:
-  push:
-    branches:
-      - 'master'
-  pull_request:
-    branches:
-      - '*'
+# Manual only - see build.yml for why the automatic triggers were removed.
+on: workflow_dispatch
 
 jobs:
   dotnet-format:

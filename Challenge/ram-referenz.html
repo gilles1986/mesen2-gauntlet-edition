@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMW RAM-Referenz &amp; Bedingungs-Generator – Mesen Challenge Edition</title>
+<style>
+  :root {
+    --bg: #14161f;
+    --panel: #1d2130;
+    --panel2: #252a3d;
+    --border: #363c55;
+    --text: #e8eaf2;
+    --muted: #9aa0b5;
+    --gold: #ffd700;
+    --green: #4ade80;
+    --red: #ff6b6b;
+    --blue: #66ccff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, sans-serif; line-height: 1.55;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 20px 80px; }
+  header { text-align: center; padding: 32px 0 10px; }
+  header .badge {
+    display: inline-block; padding: 4px 14px; border: 1px solid var(--gold);
+    border-radius: 999px; color: var(--gold); font-size: 13px;
+    letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px;
+  }
+  header h1 { font-size: clamp(24px, 4.5vw, 34px); }
+  header h1 .accent { color: var(--gold); }
+  header p.sub { color: var(--muted); max-width: 640px; margin: 12px auto 0; }
+
+  section { margin-top: 48px; }
+  h2 { font-size: 21px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
+  h2::before { content: ""; width: 6px; height: 22px; background: var(--gold); border-radius: 3px; }
+  .lead { color: var(--muted); margin-bottom: 18px; }
+
+  code, .mono { font-family: Consolas, "Cascadia Mono", monospace; }
+  code {
+    background: #11131b; border: 1px solid var(--border); border-radius: 5px;
+    padding: 1px 6px; font-size: 13px; color: var(--blue);
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--gold); font-size: 12.5px; letter-spacing: 1px; text-transform: uppercase; }
+  tr:hover td { background: var(--panel); }
+  td .why { color: var(--muted); font-size: 13px; display: block; margin-top: 2px; }
+  .tag {
+    display: inline-block; border-radius: 5px; padding: 0 8px; font-size: 12px; font-weight: 600;
+  }
+  .tag.done { background: rgba(74,222,128,.15); color: var(--green); border: 1px solid rgba(74,222,128,.4); }
+  .tag.fail { background: rgba(255,107,107,.13); color: var(--red); border: 1px solid rgba(255,107,107,.4); }
+
+  .note {
+    background: rgba(255,215,0,.07); border: 1px solid rgba(255,215,0,.3);
+    border-radius: 8px; padding: 10px 14px; margin-top: 14px; font-size: 13.5px; color: var(--muted);
+  }
+  .note strong { color: var(--gold); }
+  .note code { color: var(--blue); }
+
+  /* ---------- Builder ---------- */
+  .builder { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .builder { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px;
+  }
+  .card h3 { font-size: 15px; margin-bottom: 4px; }
+  .card h3.done-h { color: var(--green); }
+  .card h3.fail-h { color: var(--red); }
+  .card .sub { color: var(--muted); font-size: 12.5px; margin-bottom: 12px; }
+  .opt {
+    display: flex; align-items: flex-start; gap: 10px; padding: 9px 10px;
+    border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;
+    cursor: pointer; transition: border-color .12s, background .12s;
+  }
+  .opt:hover { background: var(--panel2); }
+  .opt input { margin-top: 4px; accent-color: var(--gold); }
+  .opt .l { font-size: 14px; font-weight: 600; }
+  .opt .d { font-size: 12.5px; color: var(--muted); }
+  .opt .d code { font-size: 12px; }
+
+  .custom-rows { margin-top: 4px; }
+  .custom-row {
+    display: grid; grid-template-columns: 1fr 1.2fr 0.8fr auto; gap: 6px; margin-bottom: 6px;
+    align-items: center;
+  }
+  .custom-row input, .custom-row select, .name-row input {
+    background: #11131b; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); padding: 6px 8px; font-family: Consolas, monospace; font-size: 13px;
+    width: 100%;
+  }
+  .custom-row .del {
+    background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--red);
+    cursor: pointer; padding: 5px 9px; font-size: 13px;
+  }
+  .add-btn {
+    background: none; border: 1px dashed var(--border); border-radius: 8px; color: var(--muted);
+    cursor: pointer; padding: 7px 12px; font-size: 13px; width: 100%; margin-top: 2px;
+    font-family: inherit;
+  }
+  .add-btn:hover { color: var(--text); border-color: var(--muted); }
+
+  .name-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  @media (max-width: 760px) { .name-row { grid-template-columns: 1fr; } }
+  .name-row label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 3px; }
+
+  .output-card { margin-top: 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
+  .output-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 18px; border-bottom: 1px solid var(--border);
+  }
+  .output-head h3 { font-size: 15px; }
+  .copy-btn {
+    background: var(--gold); color: #211a00; border: none; border-radius: 7px;
+    padding: 7px 16px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit;
+  }
+  .copy-btn:hover { filter: brightness(1.1); }
+  pre#out {
+    padding: 16px 18px; overflow-x: auto; font-family: Consolas, "Cascadia Mono", monospace;
+    font-size: 13px; line-height: 1.5; color: #d7dae6; white-space: pre;
+  }
+  pre#out .c { color: #6a7391; }
+  #warn { padding: 0 18px 14px; }
+  #warn .note { margin-top: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="badge">Für Challenge-Ersteller</div>
+    <h1>SMW RAM-Referenz &amp; <span class="accent">Bedingungs-Generator</span></h1>
+    <p class="sub">Nachschlagliste der wichtigen RAM-Adressen für <code>done</code>/<code>fail</code>
+    in <code>games.lua</code> — und darunter der Generator zum Zusammenklicken.</p>
+  </header>
+
+  <!-- ================= Funktionsweise ================= -->
+  <section>
+    <h2>Wie done / fail funktionieren</h2>
+    <p class="lead">Die Engine prüft beide Bedingungen jeden Frame, solange das Segment läuft:</p>
+    <table>
+      <tr><th style="width:90px"></th><th>Wirkung</th></tr>
+      <tr>
+        <td><span class="tag done">done</span></td>
+        <td>Segment geschafft → Split wird gespeichert, nächstes Segment startet.
+        <span class="why">Wird VOR fail geprüft — treffen beide im selben Frame zu, gewinnt der Erfolg.</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag fail">fail</span></td>
+        <td>Segment-Neustart: Savestate des Segment-Anfangs wird neu geladen —
+        <strong>die Gesamtzeit läuft weiter</strong> (kein Run-Reset!).
+        <span class="why">Den kompletten Run von vorn gibt es nur über die Reset-Combo des Spielers.</span></td>
+      </tr>
+    </table>
+
+    <div class="note" style="margin-top:18px">
+      <strong>Neu — mehrere fail-Bedingungen:</strong> <code>fail</code> (und auch <code>done</code>)
+      akzeptiert jetzt eine <strong>Liste</strong> von Bedingungen — es reicht, wenn <em>eine</em>
+      zutrifft (ODER-Logik). Beispiel: Tod <em>oder</em> Start+Select sollen beide das Segment neu
+      starten. Challenges, die die Listen-Form nutzen, brauchen die nächste Engine-Version —
+      dann <code>min_version</code> in games.lua entsprechend setzen.
+    </div>
+
+    <p class="lead" style="margin-top:22px">Verfügbare Operatoren (<code>op</code>) — „Basiswert" = der Wert der Adresse beim Versuchs-Start:</p>
+    <table>
+      <tr><th>op</th><th>löst aus, wenn …</th></tr>
+      <tr><td><code>nonzero</code></td><td>der Wert ≠ 0 ist <span class="why">(Standard, wenn kein op angegeben)</span></td></tr>
+      <tr><td><code>increased</code></td><td>der Wert größer als der Basiswert ist</td></tr>
+      <tr><td><code>decreased</code></td><td>der Wert kleiner als der Basiswert ist</td></tr>
+      <tr><td><code>changed</code></td><td>der Wert vom Basiswert abweicht</td></tr>
+      <tr><td><code>equals</code></td><td>der Wert exakt <code>value</code> entspricht</td></tr>
+      <tr><td><code>atleast</code></td><td>der Wert ≥ <code>value</code> ist</td></tr>
+      <tr><td><code>increasedby</code></td><td>der Wert seit Versuchs-Start um mind. <code>value</code> gestiegen ist <span class="why">(z. B. „sammel X Coins" — zählt ab dem Stand beim Segment-Start)</span></td></tr>
+      <tr><td><code>decreasedby</code></td><td>der Wert seit Versuchs-Start um mind. <code>value</code> gefallen ist</td></tr>
+    </table>
+    <div class="note" style="margin-top:12px"><strong>Neu:</strong> <code>increasedby</code>/<code>decreasedby</code>
+    brauchen die nächste Engine-Version — Challenges, die sie nutzen, entsprechend <code>min_version</code> in games.lua setzen.</div>
+    <div class="note"><strong>Hinweis:</strong> Gelesen wird SNES Work-RAM — <code>addr = 0x1493</code>
+    entspricht <code>$7E:1493</code>. Optional <code>size = 2</code> für 16-Bit-Werte (Standard: 1 Byte).</div>
+    <div class="note"><strong>Ohne Adresse:</strong> <code>done = { kills = 10 }</code> nutzt statt einer
+    RAM-Adresse den Gegner-Zähler der Engine („töte 10 Gegner", Details in der Nachschlagliste unten).
+    Braucht die Engine-Version mit Zähler-Support (3.0+) → <code>min_version</code> setzen.</div>
+    <div class="note"><strong>Fortschritt im HUD:</strong> Bei <code>atleast</code>,
+    <code>increasedby</code> und <code>decreasedby</code> blendet die Engine automatisch
+    <em>aktueller Wert / benötigter Wert</em> ein (z. B. „Score 1200/5000") — praktisch für alles,
+    was das Spiel selbst nicht anzeigt. Pro Bedingung optional:
+    <code>label = "Score"</code> (Beschriftung), <code>mul = 10</code> (Anzeigefaktor, falls der
+    RAM-Wert skaliert ist) und <code>show = false</code> (nie anzeigen). Für bekannte Adressen
+    ($0F34 Score, $0DBF Coins, $18D2 Combo, $0DBE Leben) sind Beschriftung und Faktor schon
+    hinterlegt. <code>nonzero</code>/<code>equals</code>/Bitmasken haben keinen Zwischenstand →
+    keine Anzeige. Ab Engine 3.0.</div>
+  </section>
+
+  <!-- ================= Referenz ================= -->
+  <section>
+    <h2>Nachschlagliste: die wichtigen Adressen</h2>
+    <p class="lead">Verifiziert gegen die SMWCentral-RAM-Map (SMW US).</p>
+    <table>
+      <tr><th>Ereignis</th><th>Adresse</th><th>Bedingung für games.lua</th><th>Details</th></tr>
+      <tr>
+        <td><span class="tag done">done</span> <strong>Goal-Tape / Orb / Boss</strong></td>
+        <td class="mono">$7E:1493</td>
+        <td><code>{ addr = 0x1493, op = "nonzero" }</code></td>
+        <td>End-Level-Timer: läuft, sobald das Zielband berührt / der Orb eingesammelt /
+        der Boss besiegt wurde. <span class="why">Deckt alle „normalen" Level-Enden ab — die
+        Standard-Erfolgsbedingung.</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag done">done</span> <strong>Nur Orb (Goal Sphere)</strong></td>
+        <td class="mono">$7E:1493</td>
+        <td><code>{ addr = 0x1493, op = "equals", value = 0xFF }</code></td>
+        <td>Der Orb setzt den Timer direkt auf <code>0xFF</code>.
+        <span class="why">Nur nötig, wenn das Level auch ein Zielband hat und wirklich NUR der Orb zählen soll.</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag done">done</span> <strong>Keyhole (Schlüsselloch)</strong></td>
+        <td class="mono">$7E:1434</td>
+        <td><code>{ addr = 0x1434, op = "nonzero" }</code></td>
+        <td>Keyhole-Sequenz-Timer: wird beim Aktivieren auf <code>0x30</code> gesetzt.</td>
+      </tr>
+      <tr>
+        <td><span class="tag done">done</span> <strong>Checkpoint (Midway)</strong></td>
+        <td class="mono">$7E:13CE</td>
+        <td><code>{ addr = 0x13CE, op = "increased" }</code></td>
+        <td>Midway-Flag: 0 → 1 beim Durchqueren.
+        <span class="why">Bewusst <code>increased</code> statt <code>nonzero</code>: falls der
+        Start-Savestate das Flag schon gesetzt hat, feuert die Bedingung nicht sofort.</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag done">done</span> <strong>Level verlassen (geschafft)</strong></td>
+        <td class="mono">$7E:0DD5</td>
+        <td><code>{ addr = 0x0DD5, op = "equals", value = 0x01 }</code></td>
+        <td>Wie das Level beendet wurde: <code>0x01</code> = normaler Exit,
+        <code>0x02</code> = Secret Exit (Keyhole-Ausgang).
+        <span class="why">Feuert erst beim Level-Unload — später als $1493/$1434. Für Splits
+        „auf dem Band" die Timer-Adressen nehmen.</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag done">done</span> <strong>X Coins sammeln</strong></td>
+        <td class="mono">$7E:0DBF</td>
+        <td><code>{ addr = 0x0DBF, op = "increasedby", value = 20 }</code></td>
+        <td>Coin-Zähler (0–99). <code>increasedby</code> zählt ab dem Coin-Stand beim
+        Segment-Start — also „value" Coins einsammeln, egal womit das Segment startet.
+        <span class="why">Vorsicht 100er-Grenze: bei 100 Coins gibt's ein 1-Up und der Zähler
+        springt auf 0. <code>value</code> so wählen, dass diese Grenze im Segment nicht überschritten wird.</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag done">done</span> <strong>X Score-Punkte erzielen</strong></td>
+        <td class="mono">$7E:0F34</td>
+        <td><code>{ addr = 0x0F34, op = "increasedby", value = 500, size = 3 }</code></td>
+        <td>Mario-Score (3 Bytes). <strong>Der RAM-Wert ist Punkte ÷ 10</strong> —
+        <code>value = 500</code> heißt also 5000 Punkte.
+        <span class="why">SMW blendet den Score während des Levels nirgends ein — die Engine
+        zeigt ihn deshalb als Fortschritt im HUD: „Score 1200/5000" (Adresse $0F34 ist bekannt,
+        der Faktor 10 wird automatisch eingerechnet). <code>size = 3</code> liest genau die drei
+        Score-Bytes; ältere Snippets mit <code>size = 4</code> funktionieren weiter (das vierte
+        Byte ist Luigis Score-Low-Byte, bei <code>increasedby</code> egal).</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag done">done</span> <strong>X Gegner töten</strong></td>
+        <td class="mono">$7E:14C8</td>
+        <td><code>{ kills = 10 }</code></td>
+        <td>Gegner-Zähler der Engine: sie scannt pro Frame die Sprite-Statustabelle
+        ($14C8, 12 Slots) und zählt jeden Wechsel von „lebt" (<code>08</code> normal,
+        <code>09</code> liegend, <code>0A</code> gekickt, <code>0B</code> getragen) auf „tot"
+        (<code>02</code> weggeschleudert, <code>03</code> platt, <code>04</code> Spinjump,
+        <code>05</code> verbrannt); von Yoshi verschluckt (<code>07</code>&nbsp;→&nbsp;<code>00</code>)
+        zählt ebenfalls.
+        <span class="why">Der Zähler startet bei jedem Versuch wieder bei 0 (der Savestate bringt
+        die Gegner ja auch zurück) und wird im HUD als „Kills 3/10" eingeblendet. Normales Despawnen
+        am Bildschirmrand zählt nicht. Pro Segment abschaltbar/anpassbar über
+        <code>kills = false</code> bzw. <code>kills = { label = "Gegner", ... }</code>.</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag fail">fail</span> <strong>Death (Tod)</strong></td>
+        <td class="mono">$7E:0071</td>
+        <td><code>{ addr = 0x0071, op = "equals", value = 0x09 }</code></td>
+        <td>Player-Animation: <code>0x09</code> = Death-Animation.
+        <span class="why">Feuert sofort im Moment des Todes — der Neustart kommt ohne
+        „MARIO START!"-Umweg.</span></td>
+      </tr>
+      <tr>
+        <td><span class="tag fail">fail</span> <strong>Start+Select-Exit</strong></td>
+        <td class="mono">$7E:0DD5</td>
+        <td><code>{ addr = 0x0DD5, op = "equals", value = 0x80 }</code></td>
+        <td>Level per Start+Select verlassen setzt <code>0x80</code>.
+        <span class="why">Achtung: Auch ein Tod setzt am Ende der Death-Animation 0x80 — in Kombination
+        mit der Death-Bedingung feuert die aber vorher (unproblematisch). Ohne Death-Bedingung fängt
+        diese hier beides ab, nur später.</span></td>
+      </tr>
+    </table>
+  </section>
+
+  <!-- ================= Builder ================= -->
+  <section>
+    <h2>Generator: Bedingungen zusammenklicken</h2>
+    <p class="lead">Auswählen, unten das fertige games.lua-Snippet kopieren.</p>
+
+    <div class="name-row">
+      <div><label>Segment-Name</label><input id="segName" value="Segment 1" spellcheck="false"></div>
+      <div><label>ROM-Datei (Feld „rom")</label><input id="segRom" value="Level1.smc" spellcheck="false"></div>
+      <div><label>State-Datei (Feld „state")</label><input id="segState" value="states/Level1.state" spellcheck="false"></div>
+    </div>
+
+    <div class="builder">
+      <!-- Success -->
+      <div class="card">
+        <h3 class="done-h">✔ Success (done) — genau eins wählen</h3>
+        <div class="sub">Was beendet das Segment erfolgreich?</div>
+        <label class="opt"><input type="radio" name="done" value="goal" checked>
+          <span><span class="l">Goal-Tape / Orb / Boss</span><br>
+          <span class="d"><code>0x1493 nonzero</code> — der Klassiker, deckt alle normalen Level-Enden ab</span></span></label>
+        <label class="opt"><input type="radio" name="done" value="orb">
+          <span><span class="l">Nur Orb (Goal Sphere)</span><br>
+          <span class="d"><code>0x1493 equals 0xFF</code> — falls das Zielband NICHT zählen soll</span></span></label>
+        <label class="opt"><input type="radio" name="done" value="keyhole">
+          <span><span class="l">Keyhole</span><br>
+          <span class="d"><code>0x1434 nonzero</code> — Schlüssel ins Schlüsselloch</span></span></label>
+        <label class="opt"><input type="radio" name="done" value="midway">
+          <span><span class="l">Checkpoint (Midway)</span><br>
+          <span class="d"><code>0x13CE increased</code> — Segment endet am Midway-Band</span></span></label>
+        <label class="opt"><input type="radio" name="done" value="exit">
+          <span><span class="l">Level verlassen (normaler Exit)</span><br>
+          <span class="d"><code>0x0DD5 equals 0x01</code> — erst beim Level-Unload</span></span></label>
+        <label class="opt"><input type="radio" name="done" value="coins">
+          <span><span class="l">X Coins sammeln</span><br>
+          <span class="d"><code>0x0DBF increasedby 20</code> — <code>value</code> = Anzahl Coins ab Segment-Start</span></span></label>
+        <label class="opt"><input type="radio" name="done" value="kills">
+          <span><span class="l">X Gegner töten</span><br>
+          <span class="d"><code>kills = 10</code> — der Gegner-Zähler der Engine (Sprite-Status $14C8),
+          zählt ab 0 bei jedem Versuch</span></span></label>
+        <div class="custom-rows" id="killsWrap" style="display:none">
+          <div class="custom-row">
+            <input id="killsN" value="10" spellcheck="false">
+            <span>Gegner</span><span></span><span></span>
+          </div>
+        </div>
+        <label class="opt"><input type="radio" name="done" value="custom">
+          <span><span class="l">Eigene Bedingung</span><br>
+          <span class="d">Adresse / op / value frei eingeben</span></span></label>
+        <div class="custom-rows" id="doneCustomWrap" style="display:none">
+          <div class="custom-row">
+            <input id="dcAddr" placeholder="0x13CE" spellcheck="false">
+            <select id="dcOp">
+              <option>nonzero</option><option>increased</option><option>decreased</option>
+              <option>changed</option><option>equals</option><option>atleast</option>
+              <option>increasedby</option><option>decreasedby</option>
+            </select>
+            <input id="dcVal" placeholder="value" spellcheck="false">
+            <span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fail -->
+      <div class="card">
+        <h3 class="fail-h">✘ Fail — beliebig viele wählen (ODER-Logik)</h3>
+        <div class="sub">Was startet das Segment neu? (Gesamtzeit läuft weiter)</div>
+        <label class="opt"><input type="checkbox" id="failDeath" checked>
+          <span><span class="l">Death (Tod)</span><br>
+          <span class="d"><code>0x0071 equals 0x09</code> — feuert sofort bei der Death-Animation</span></span></label>
+        <label class="opt"><input type="checkbox" id="failSS">
+          <span><span class="l">Level per Start+Select verlassen</span><br>
+          <span class="d"><code>0x0DD5 equals 0x80</code></span></span></label>
+        <div class="custom-rows" id="failCustomRows"></div>
+        <button class="add-btn" id="addFailRow" type="button">+ Eigene fail-Bedingung hinzufügen</button>
+      </div>
+    </div>
+
+    <div class="output-card">
+      <div class="output-head">
+        <h3>games.lua-Snippet</h3>
+        <button class="copy-btn" id="copyBtn" type="button">Kopieren</button>
+      </div>
+      <pre id="out"></pre>
+      <div id="warn"></div>
+    </div>
+  </section>
+
+  <footer style="margin-top:60px;text-align:center;color:var(--muted);font-size:13px">
+    Adressen verifiziert gegen die SMWCentral-RAM-Map ·
+    Paket-Format: siehe PACKAGE_LAYOUT.md · Spieler-Doku: anleitung.html
+  </footer>
+</div>
+
+<script>
+  const PRESETS = {
+    done: {
+      goal:    { cond: { addr: "0x1493", op: "nonzero" },                 c: "Goal-Tape / Orb / Boss" },
+      orb:     { cond: { addr: "0x1493", op: "equals", value: "0xFF" },   c: "nur Orb (Goal Sphere)" },
+      keyhole: { cond: { addr: "0x1434", op: "nonzero" },                 c: "Keyhole" },
+      midway:  { cond: { addr: "0x13CE", op: "increased" },               c: "Checkpoint (Midway)" },
+      exit:    { cond: { addr: "0x0DD5", op: "equals", value: "0x01" },   c: "Level geschafft verlassen" },
+      coins:   { cond: { addr: "0x0DBF", op: "increasedby", value: "20" }, c: "X Coins sammeln" },
+      kills:   { cond: { kills: "10" },                                    c: "X Gegner töten" }
+    },
+    death: { cond: { addr: "0x0071", op: "equals", value: "0x09" }, c: "Death" },
+    ss:    { cond: { addr: "0x0DD5", op: "equals", value: "0x80" }, c: "Start+Select-Exit" }
+  };
+
+  function luaCond(cond) {
+    // Gegner-Zähler: eigene Kurzform, keine RAM-Adresse (die Engine normalisiert das zu
+    // { counter = "kills", op = "atleast", value = N }).
+    if(cond.kills) { return "{ kills = " + esc(cond.kills) + " }"; }
+    let s = "{ addr = " + esc(cond.addr) + ', op = "' + cond.op + '"';
+    if(cond.op === "equals" || cond.op === "atleast" || cond.op === "increasedby" || cond.op === "decreasedby") {
+      s += ", value = " + esc(cond.value || "0");
+    }
+    if(cond.size && cond.size !== "1") { s += ", size = " + cond.size; }
+    return s + " }";
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function readCustomVal(el) { return (el.value || "").trim(); }
+
+  let failRowId = 0;
+  function addFailRow() {
+    failRowId++;
+    const div = document.createElement("div");
+    div.className = "custom-row";
+    div.innerHTML =
+      '<input class="fcAddr" placeholder="0x0071" spellcheck="false">' +
+      '<select class="fcOp"><option>nonzero</option><option>increased</option><option>decreased</option>' +
+      '<option>changed</option><option>equals</option><option>atleast</option>' +
+      '<option>increasedby</option><option>decreasedby</option></select>' +
+      '<input class="fcVal" placeholder="value" spellcheck="false">' +
+      '<button class="del" type="button" title="Entfernen">✕</button>';
+    div.querySelector(".del").addEventListener("click", () => { div.remove(); render(); });
+    div.querySelectorAll("input,select").forEach(el => el.addEventListener("input", render));
+    document.getElementById("failCustomRows").appendChild(div);
+    render();
+  }
+
+  function collect() {
+    // ----- done -----
+    const doneChoice = document.querySelector('input[name="done"]:checked').value;
+    let done;
+    if(doneChoice === "custom") {
+      done = {
+        cond: {
+          addr: readCustomVal(document.getElementById("dcAddr")) || "0x0000",
+          op: document.getElementById("dcOp").value,
+          value: readCustomVal(document.getElementById("dcVal"))
+        },
+        c: "eigene Bedingung"
+      };
+    } else if(doneChoice === "kills") {
+      const n = readCustomVal(document.getElementById("killsN")) || "10";
+      done = { cond: { kills: n }, c: n + " Gegner töten" };
+    } else {
+      done = PRESETS.done[doneChoice];
+    }
+
+    // ----- fail -----
+    const fails = [];
+    if(document.getElementById("failDeath").checked) { fails.push(PRESETS.death); }
+    if(document.getElementById("failSS").checked)    { fails.push(PRESETS.ss); }
+    document.querySelectorAll("#failCustomRows .custom-row").forEach(row => {
+      const addr = readCustomVal(row.querySelector(".fcAddr"));
+      if(addr.length === 0) { return; }
+      fails.push({
+        cond: { addr: addr, op: row.querySelector(".fcOp").value,
+                value: readCustomVal(row.querySelector(".fcVal")) },
+        c: "eigene Bedingung"
+      });
+    });
+    return { done, fails };
+  }
+
+  function render() {
+    const doneSel = document.querySelector('input[name="done"]:checked').value;
+    document.getElementById("doneCustomWrap").style.display = doneSel === "custom" ? "" : "none";
+    document.getElementById("killsWrap").style.display = doneSel === "kills" ? "" : "none";
+
+    const { done, fails } = collect();
+    const name  = esc(document.getElementById("segName").value.trim() || "Segment");
+    const rom   = esc(document.getElementById("segRom").value.trim() || "Level.smc");
+    const state = esc(document.getElementById("segState").value.trim() || "states/Level.state");
+
+    const IND = "    ";
+    let lua = '{ name = "' + name + '", rom = "' + rom + '",\n';
+    lua += IND + 'state = "' + state + '",\n';
+    lua += IND + "done = " + luaCond(done.cond) + ",   <span class='c'>-- " + done.c + "</span>\n";
+
+    if(fails.length === 1) {
+      lua += IND + "fail = " + luaCond(fails[0].cond) + " },   <span class='c'>-- " + fails[0].c + "</span>";
+    } else if(fails.length > 1) {
+      lua += IND + "fail = {\n";
+      fails.forEach(f => {
+        lua += IND + IND + luaCond(f.cond) + ",   <span class='c'>-- " + f.c + "</span>\n";
+      });
+      lua += IND + "} },";
+    } else {
+      lua += IND + "},   <span class='c'>-- kein fail: nur die Reset-Combo startet neu</span>";
+    }
+
+    document.getElementById("out").innerHTML = lua;
+
+    // Hinweise
+    let warn = "";
+    if(fails.length > 1) {
+      warn += "<div class='note'><strong>min_version beachten:</strong> Die fail-<em>Liste</em> " +
+              "braucht die Engine-Version mit Multi-Fail-Support — in games.lua " +
+              "<code>min_version</code> auf die entsprechende Emulator-Version setzen.</div>";
+    }
+    const ssOnly = document.getElementById("failSS").checked && !document.getElementById("failDeath").checked;
+    if(ssOnly) {
+      warn += "<div class='note'><strong>Hinweis:</strong> <code>0x0DD5 == 0x80</code> feuert auch " +
+              "beim Tod (nur später, nach der Death-Animation). Für den sofortigen Tod-Neustart die " +
+              "Death-Bedingung zusätzlich anhaken.</div>";
+    }
+    document.getElementById("warn").innerHTML = warn;
+  }
+
+  function copyOut() {
+    // reinen Text (ohne HTML-Kommentar-Spans) kopieren
+    const text = document.getElementById("out").innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById("copyBtn");
+      const old = btn.textContent;
+      btn.textContent = "Kopiert ✔";
+      setTimeout(() => { btn.textContent = old; }, 1500);
+    });
+  }
+
+  document.querySelectorAll('input[name="done"]').forEach(el => el.addEventListener("change", render));
+  ["dcAddr","dcVal","killsN","segName","segRom","segState"].forEach(id =>
+    document.getElementById(id).addEventListener("input", render));
+  document.getElementById("dcOp").addEventListener("change", render);
+  ["failDeath","failSS"].forEach(id =>
+    document.getElementById(id).addEventListener("change", render));
+  document.getElementById("addFailRow").addEventListener("click", addFailRow);
+  document.getElementById("copyBtn").addEventListener("click", copyOut);
+
+  render();
+</script>
+</body>
+</html>

@@ -228,15 +228,19 @@ namespace Mesen.Config
 		}
 
 		/// <summary>
-		/// Makes a double-click on a .creplay open its replay in this copy of the emulator.
+		/// Registers the two ways a replay reaches this copy of the emulator: a double-click on a
+		/// .creplay, and a mesen-challenge:// link from saphros.de.
 		///
 		/// Unlike the ROM associations above this one is on by default and rewritten on every
 		/// launch, because the Challenge Edition ships as a portable exe with no installer: the
-		/// registration has to follow the exe when the player moves it, or the association would
-		/// silently point at a path that no longer exists.
+		/// registration has to follow the exe when the player moves it, or it would silently point
+		/// at a path that no longer exists.
 		///
-		/// It uses its own ProgID rather than Mesen's, so turning it off can't disturb the ROM
-		/// associations - and so the protocol handler can later hang off the same entry.
+		/// The file extension goes through its own ProgID rather than Mesen's, so turning this off
+		/// can't disturb the ROM associations. The URL scheme cannot use that indirection - Windows
+		/// requires the scheme key itself to carry "URL Protocol" and its own shell\open\command -
+		/// so it gets the identical command written directly. Both are written and removed together.
+		/// See docs/adr/0002-replay-einstieg-per-protokoll-handler.md.
 		/// </summary>
 		static public void UpdateChallengeReplayAssociation(bool associate)
 		{
@@ -247,17 +251,26 @@ namespace Mesen.Config
 
 			string extKey = @"HKEY_CURRENT_USER\Software\Classes\." + FileDialogHelper.ChallengeReplayExt;
 			string progIdPath = @"Software\Classes\" + ChallengeReplayProgId;
+			string schemePath = @"Software\Classes\" + ChallengeReplayLink.Scheme;
 
 			if(associate) {
 				ProcessModule? mainModule = Process.GetCurrentProcess().MainModule;
 				if(mainModule != null) {
 					//The exe path MUST be quoted: the emulator is portable, so it routinely lives
 					//under a user folder whose name contains a space ("C:\Users\Max Mustermann\...").
-					//Unquoted, Windows would split the command there and the association would break
+					//Unquoted, Windows would split the command there and both entries would break
 					//exactly when someone moves it - which is the case this is meant to survive.
+					string command = "\"" + mainModule.FileName + "\" \"%1\"";
+
 					Registry.SetValue(@"HKEY_CURRENT_USER\" + progIdPath, null, "Challenge Replay");
-					Registry.SetValue(@"HKEY_CURRENT_USER\" + progIdPath + @"\shell\open\command", null, "\"" + mainModule.FileName + "\" \"%1\"");
+					Registry.SetValue(@"HKEY_CURRENT_USER\" + progIdPath + @"\shell\open\command", null, command);
 					Registry.SetValue(extKey, null, ChallengeReplayProgId);
+
+					//The "URL Protocol" value (empty by convention) is what marks this key as a
+					//scheme handler; without it Windows ignores the entry entirely.
+					Registry.SetValue(@"HKEY_CURRENT_USER\" + schemePath, null, "URL:Mesen Challenge Replay");
+					Registry.SetValue(@"HKEY_CURRENT_USER\" + schemePath, "URL Protocol", "");
+					Registry.SetValue(@"HKEY_CURRENT_USER\" + schemePath + @"\shell\open\command", null, command);
 				}
 			} else {
 				//Only clear the extension when it still points at us - someone else's handler
@@ -268,6 +281,11 @@ namespace Mesen.Config
 				}
 				try {
 					Registry.CurrentUser.DeleteSubKeyTree(progIdPath, false);
+				} catch { }
+				//The scheme is ours alone (nobody else answers mesen-challenge://), so it goes
+				//away wholesale.
+				try {
+					Registry.CurrentUser.DeleteSubKeyTree(schemePath, false);
 				} catch { }
 			}
 		}

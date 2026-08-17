@@ -296,6 +296,16 @@ namespace Mesen.Config
 
 		public void RemoveObsoleteConfig()
 		{
+			//The challenge auto-reset used to be a single "on death" switch; it is now a three-way
+			//setting on the fail conditions (ChallengeConfig.AutoReset). Carry an existing "on"
+			//over instead of silently turning the feature off, then clear the old flag so this
+			//runs exactly once. Note the trigger changed with it: the old switch used an SMW-only
+			//death check, the new one uses the challenge's own fail conditions.
+			if(Challenge.AutoResetOnDeath) {
+				Challenge.AutoReset = ChallengeAutoReset.EverySegment;
+				Challenge.AutoResetOnDeath = false;
+			}
+
 			//Clean up configuration to remove any obsolete values that existed in older versions
 			for(int i = Preferences.ShortcutKeys.Count - 1; i >= 0; i--) {
 				if(Preferences.ShortcutKeys[i].Shortcut >= EmulatorShortcut.LastValidValue) {

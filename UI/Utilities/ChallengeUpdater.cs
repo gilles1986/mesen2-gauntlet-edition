@@ -12,7 +12,7 @@ namespace Mesen.Utilities
 	/// Checks saphros.de for a newer Challenge Edition build and applies it.
 	///
 	/// The Challenge Edition is published as a single self-contained Mesen.exe inside a
-	/// ZIP (just the exe plus README.txt), so "updating" just means swapping that exe.
+	/// ZIP (see Challenge/PACKAGE_LAYOUT.md), so "updating" just means swapping that exe.
 	/// We reuse Mesen's existing, proven exe-swap machinery (UpdateHelper.LaunchUpdate ->
 	/// relaunch with "--update" -> AttemptUpdate), which already handles the Windows file
 	/// lock (a running exe can't be overwritten): the freshly-extracted exe is launched as

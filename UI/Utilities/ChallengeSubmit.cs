@@ -19,7 +19,7 @@ namespace Mesen.Utilities
 	/// the done screen; this class signs the run (HMAC) and POSTs it to the saphros.de
 	/// leaderboard API, then writes "submit_result.txt" back for the engine to display.
 	///
-	/// The contract with the backend is defined server-side. Signing here
+	/// The shared contract is documented in Challenge/LEADERBOARD_API.md. Signing here
 	/// MUST stay byte-for-byte identical to the server's verification.
 	///
 	/// JSON is written with Utf8JsonWriter / parsed with JsonDocument (both reflection-free)
@@ -145,7 +145,7 @@ namespace Mesen.Utilities
 		}
 
 		/// <summary>
-		/// Signs a run (fresh timestamp + nonce, per the canonical string below) and POSTs
+		/// Signs a run (fresh timestamp + nonce, per Challenge/LEADERBOARD_API.md §3) and POSTs
 		/// it. A stored signature can't be replayed (the server enforces a +/-600s window), so
 		/// buffered runs are re-signed here each time. Never throws: a network-level failure is
 		/// reported via SendOutcome.GotResponse == false so the caller can queue for retry.
@@ -155,7 +155,7 @@ namespace Mesen.Utilities
 			long timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 			string nonce = Guid.NewGuid().ToString("N");
 
-			//Canonical string — order and separators are fixed and must match the server.
+			//Canonical string per Challenge/LEADERBOARD_API.md §3 — order/separators are fixed.
 			string canonical = string.Join("\n", new[] {
 				run.ChallengeId,
 				run.TotalFrames.ToString(),
@@ -185,7 +185,7 @@ namespace Mesen.Utilities
 		/// (including a not-yet-existing endpoint or being offline) is swallowed. Signed like a
 		/// submit — with a dedicated "recording" canonical so the signature can't be replayed as a
 		/// run submission — so the server can (optionally) authenticate it and match it to the run.
-		/// Backend endpoint: recording-upload.php.
+		/// Contract: Challenge/LEADERBOARD_API.md (recording-upload.php).
 		/// </summary>
 		private static async Task UploadRecording(string replayPath, ChallengeRun run)
 		{
@@ -282,7 +282,7 @@ namespace Mesen.Utilities
 				w.WriteString("nonce", nonce);
 				w.WriteString("signature", signature);
 				//Identifies the linked Twitch account (if any) so the server can stamp/require
-				//it - see the server-side device-login-confirm.php.
+				//it - see Challenge/LEADERBOARD_API.md and device-login-confirm.php.
 				if(run.LinkToken.Length > 0) {
 					w.WriteString("link_token", run.LinkToken);
 				}
@@ -307,7 +307,7 @@ namespace Mesen.Utilities
 						msg += " (practice)";
 					}
 
-					//Achievements unlocked by this submission, as reported by the server. Passed to
+					//Achievements unlocked by this submission (see LEADERBOARD_API.md). Passed to
 					//the engine as extra "ach;" lines in submit_result.txt so the done screen can
 					//show an unlock popup. Icons are emoji -> skipped (the script HUD font is
 					//ASCII-only); name/desc are sanitized for the same reason.
@@ -356,6 +356,12 @@ namespace Mesen.Utilities
 					//Challenge doesn't exist (anymore) or its submission window is closed/
 					//deactivated server-side (HTTP 400) -> the run simply can't be submitted.
 					return "Challenge is closed for submissions";
+				case "ended":
+					//The challenge's deadline has passed (submit.php checks ends_at). Distinct from
+					//"inactive": the challenge is fine, its submission window is simply over. Worth
+					//its own wording because the player only finds out here, after a full run - the
+					//challenge browser can't warn them yet (see .scratch/challenge-expiry-status).
+					return "Challenge deadline has passed - run not submitted";
 				case "login_required":
 					//Retryable on the done screen: log in via Challenge > Settings, then press START again.
 					return "To submit, log in with Twitch under Challenge > Settings";

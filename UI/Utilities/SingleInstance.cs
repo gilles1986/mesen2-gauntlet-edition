@@ -54,6 +54,15 @@ namespace Mesen.Utilities
 						client.Connect(200);
 
 						foreach(string argument in args) {
+							//A replay link is a URL, not a file name: resolving it as a path yields
+							//nonsense at best and can throw, which - inside this try - would drop the
+							//whole hand-over and make a Play click on the website do nothing while
+							//the emulator is already running. Pass it through untouched.
+							if(ChallengeReplayLink.HasScheme(argument)) {
+								writer.WriteLine(argument);
+								continue;
+							}
+
 							string absPath;
 							if(Path.IsPathRooted(argument)) {
 								absPath = argument;

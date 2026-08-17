@@ -16,6 +16,13 @@ namespace Mesen.Config
 		Smaller = 4
 	}
 
+	public enum ChallengeInputDisplayPosition
+	{
+		BottomRight,
+		TopRight,
+		BottomLeft
+	}
+
 	//SNES controller buttons for the configurable reset shortcut. The member names lowercased
 	//(A -> "a", Select -> "select", ...) match the engine's emu.getInput() keys, so they inject
 	//directly. None = "unused" (see ChallengeConfig.ResetButton1/2).
@@ -25,6 +32,30 @@ namespace Mesen.Config
 		A, B, X, Y, L, R,
 		Select, Start,
 		Up, Down, Left, Right
+	}
+
+	//When a fail condition triggers, restart the WHOLE run instead of just reloading the segment.
+	//One setting rather than two switches because both variants share the same trigger - the
+	//challenge's own games.lua "fail" conditions - and differ only in where they apply.
+	public enum ChallengeAutoReset
+	{
+		//Classic: a fail reloads the current segment, the run (and its clock) carries on.
+		Off,
+		//Only in segment 1, where a fail puts you back at the start of the run anyway.
+		FirstSegmentOnly,
+		//In every segment: any fail ends the attempt and starts over.
+		EverySegment
+	}
+
+	//What opening a replay does - by double-click or from a play button on saphros.de.
+	public enum ChallengeReplayOpen
+	{
+		//Show the prompt and let the player pick each time.
+		Ask,
+		//Go straight to watching the run.
+		Watch,
+		//Go straight to racing its ghost.
+		Race
 	}
 
 	public class ChallengeConfig : BaseConfig<ChallengeConfig>
@@ -54,6 +85,14 @@ namespace Mesen.Config
 		//the display settings) since it isn't something the Settings dialog edits.
 		[Reactive] public int LastDismissedAnnouncementId { get; set; } = 0;
 
+		//What opening a replay does. "Ask" shows the prompt every time; Watch/Race skip it and get
+		//on with it. Skipping only applies when the choice is actually free: if the challenge still
+		//has to be installed, if a challenge is running that would be ended, or if Race was chosen
+		//for a replay without ghost data, the prompt appears anyway - those are decisions the player
+		//hasn't pre-authorised by picking a default. The window itself always appears, since it is
+		//also where the download progress and any failure are shown.
+		[Reactive] public ChallengeReplayOpen ReplayOpenMode { get; set; } = ChallengeReplayOpen.Ask;
+
 		//Register this copy of the emulator as the handler for .creplay replay files, so a shared
 		//replay opens with a double-click. Rewritten on every launch (the Challenge Edition is a
 		//portable exe, so the registration has to follow it when it's moved); turning this off
@@ -81,6 +120,14 @@ namespace Mesen.Config
 		//Size of the challenge/practice HUD. Injected into the engine as __HUD_SS (the enum
 		//value is the script-HUD surface scale; higher = smaller HUD).
 		[Reactive] public ChallengeHudSize HudSize { get; set; } = ChallengeHudSize.Normal;
+
+		//Show the on-screen SNES controller input display (live and in replays). Injected as
+		//__INPUT_DISPLAY.
+		[Reactive] public bool ShowInputDisplay { get; set; } = false;
+
+		//Position of the input display on screen (BottomRight, TopRight, BottomLeft). Injected as
+		//__INPUT_DISPLAY_POS.
+		[Reactive] public ChallengeInputDisplayPosition InputDisplayPosition { get; set; } = ChallengeInputDisplayPosition.BottomRight;
 
 		//Show the semi-transparent personal-best ghost overlay while playing. Injected as
 		//__GHOST ("off"/"pb"). Off = no ghost file is loaded, no drawing overhead.
@@ -146,11 +193,26 @@ namespace Mesen.Config
 		//so runs stay fair. See ChallengeManager.BuildEngineSource / relay.lua applyMusicMute.
 		[Reactive] public bool MuteMusic { get; set; } = false;
 
-		//Auto-reset the whole run on death: instead of reloading the current segment (deaths
-		//stay part of the run), a death restarts the challenge from segment 1 (counts as a new
-		//attempt). Injected as __AUTO_RESET_ON_DEATH. Off by default (classic keep-going runs).
-		//Death is detected in the engine via SMW's player-animation state ($0071 == 9), so this
-		//is SMW-only (per-segment overridable via games.lua seg.death); leave off for retro games.
+		//Restart the whole run when a fail triggers, instead of reloading the segment and letting
+		//the clock run on. Injected as __AUTO_RESET ("off" / "first" / "always"). Counts as a new
+		//attempt, exactly like the reset combo. Driven by the challenge's own games.lua "fail"
+		//conditions, so it works for retro-game challenges too - not just SMW hacks.
+		//No effect in practice mode (there, restarting the segment is the point) or during replays.
+		//
+		//Defaults to FirstSegmentOnly because that is what players do by hand anyway: a fail in the
+		//first segment puts them back at the start of the run, so the only thing carrying on is a
+		//clock on an already-spoiled attempt. It can never keep a better time - a reset only ever
+		//discards a run - so it cannot flatter anyone's leaderboard entry. It does make the attempt
+		//counter climb faster, and it changes behaviour for existing installs (their settings.json
+		//has no AutoReset field yet, so they pick up this default) - worth a line in the release
+		//announcement.
+		[Reactive] public ChallengeAutoReset AutoReset { get; set; } = ChallengeAutoReset.FirstSegmentOnly;
+
+		//OBSOLETE - replaced by AutoReset. Kept only so an existing settings.json that had it on
+		//is carried over instead of silently losing the setting; Configuration.RemoveObsoleteConfig
+		//maps it to AutoReset.EverySegment once and then clears it. Do not read this anywhere else.
+		//(The old implementation also used a different trigger: an SMW-only death check on the
+		//player-animation state, independent of the fail conditions.)
 		[Reactive] public bool AutoResetOnDeath { get; set; } = false;
 	}
 }
