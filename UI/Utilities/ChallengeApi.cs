@@ -13,7 +13,7 @@ namespace Mesen.Utilities
 		// NOTE: "Casual" anti-cheat only. This secret is compiled into the build and can be
 		// extracted; it is just a deterrent. It must match CHALLENGE_HMAC_SECRET on the
 		// saphros.de server. Replace before shipping and keep both sides in sync.
-		public const string HmacSecret = "72147875578249186686397822266499";
+		public const string HmacSecret = ChallengeSecrets.HmacSecret;
 		public const string BaseUrl = "https://saphros.de/api/challenge/";
 
 		public static string HmacHex(string canonical)
